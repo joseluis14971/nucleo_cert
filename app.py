@@ -483,5 +483,75 @@ def completar_firma(uuid):
     total = conn.execute("SELECT COUNT(*) FROM partes WHERE tramite_id=?", (tramite_id,)).fetchone()[0]
     completados = conn.execute("SELECT COUNT(*) FROM partes WHERE tramite_id=? AND completado=1", (tramite_id,)).fetchone()[0]
     numero_cert = conn.execute("SELECT numero_cert FROM tramites WHERE id=?", (tramite_id,)).fetchone()[0]
+    tramite = conn.execute("SELECT * FROM tramites WHERE id=?", (tramite_id,)).fetchone()
     conn.close()
+    # Enviar email al solicitante con fotos del firmante
+    try:
+        import base64 as _b64
+        solicitante_email = tramite["solicitante_email"]
+        solicitante_nombre = tramite["solicitante_nombre"]
+        firmante_nombre = data.get("nombre_completo", p["nombre_completo"])
+        firmante_dni = data.get("dni_numero", p["dni_numero"])
+        firmante_rol = p["rol"]
+        fecha_str = datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC")
+        # Leer fotos guardadas
+        def foto_b64(campo, ext):
+            path = f"{carpeta}/{campo}.{ext}"
+            if _os.path.exists(path):
+                with open(path, "rb") as f:
+                    return _b64.b64encode(f.read()).decode()
+            return None
+        frente = foto_b64("dni_frente", "jpg")
+        dorso = foto_b64("dni_dorso", "jpg")
+        selfie = foto_b64("selfie", "jpg")
+        def img_tag(b64, label):
+            if b64:
+                return f'<div style="margin-bottom:16px"><div style="font-size:.78rem;font-weight:600;color:#5a6b57;margin-bottom:6px">{label}</div><img src="data:image/jpeg;base64,{b64}" style="width:100%;max-width:320px;border-radius:8px;border:1px solid #e5e7eb"></div>'
+            return f'<div style="color:#9aab97;font-size:.82rem">{label}: no disponible</div>'
+        from email.mime.image import MIMEImage
+        msg = MIMEMultipart("mixed")
+        msg["Subject"] = f"Núcleo CERT — {firmante_nombre} completó su firma ({numero_cert})"
+        msg["From"] = f"Núcleo CERT <{GMAIL_USER}>"
+        msg["To"] = solicitante_email
+        html = f"""
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#f0f7f2;padding:32px">
+          <div style="background:#fff;border-radius:12px;padding:32px;border:1px solid #e5e7eb">
+            <div style="text-align:center;margin-bottom:24px">
+              <h1 style="color:#2d9b5a;font-size:22px;margin:0">Núcleo CERT</h1>
+              <p style="color:#5a6b57;font-size:13px;margin:4px 0">Verificación de identidad del firmante</p>
+            </div>
+            <p style="color:#374334;font-size:15px">Hola <strong>{solicitante_nombre}</strong>,</p>
+            <p style="color:#374334;font-size:14px"><strong>{firmante_nombre}</strong> ({firmante_rol}) completó su proceso de verificación de identidad para el trámite <strong>{numero_cert}</strong>.</p>
+            <div style="background:#f0fdf4;border-radius:8px;padding:16px;margin:20px 0">
+              <div style="font-size:13px;color:#5a6b57">Firmante</div>
+              <div style="font-size:15px;font-weight:700;color:#1a2e1a">{firmante_nombre}</div>
+              <div style="font-size:13px;color:#5a6b57">DNI: {firmante_dni} — Rol: {firmante_rol}</div>
+              <div style="font-size:12px;color:#9aab97;margin-top:4px">Fecha: {fecha_str}</div>
+            </div>
+            <p style="color:#374334;font-size:13px;font-weight:600">Por favor verificá que las fotos correspondan a la persona indicada:</p>
+            <p style="color:#374334;font-size:13px">Las fotos del DNI y selfie se encuentran adjuntas a este email.</p>
+            <div style="background:#fef9c3;border-radius:8px;padding:14px;font-size:13px;color:#78400a;margin-top:20px">
+              Si las fotos no corresponden a <strong>{firmante_nombre}</strong> o el DNI no es válido, contactá a Núcleo CERT para cancelar esta firma.
+            </div>
+            <p style="color:#9aab97;font-size:11px;line-height:1.6;text-align:center;margin-top:20px">
+              Núcleo CERT — nucleocert.com<br>
+              No reemplaza la escritura pública en los actos que la ley argentina exige dicha forma (art. 1017 CCCN).
+            </p>
+          </div>
+        </div>"""
+        msg.attach(MIMEText(html, "html"))
+        # Adjuntar fotos
+        for campo, label in [("dni_frente","DNI_frente"), ("dni_dorso","DNI_dorso"), ("selfie","Selfie")]:
+            path = f"{carpeta}/{campo}.jpg"
+            if _os.path.exists(path):
+                with open(path, "rb") as f:
+                    img = MIMEImage(f.read(), _subtype="jpeg")
+                    img.add_header("Content-Disposition", "attachment", filename=f"{label}_{firmante_nombre.replace(' ','_')}.jpg")
+                    msg.attach(img)
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(GMAIL_USER, GMAIL_PASS)
+            server.sendmail(GMAIL_USER, solicitante_email, msg.as_string())
+        print(f"Email fotos enviado a {solicitante_email}")
+    except Exception as e:
+        print(f"Error email fotos solicitante: {e}")
     return jsonify({"ok": True, "numero_cert": numero_cert, "total": total, "completados": completados})
