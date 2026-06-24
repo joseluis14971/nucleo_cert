@@ -425,6 +425,20 @@ def get_firma(uuid):
         return jsonify({"ok": False, "error": "Esta firma ya fue completada"}), 400
     return jsonify({"ok": True, "parte": dict(p), "tramite": dict(t)})
 
+@app.route("/api/firmar/<uuid>/validar-dni", methods=["POST"])
+def validar_dni_firma(uuid):
+    data = request.json
+    conn = get_db()
+    p = conn.execute("SELECT * FROM partes WHERE link_uuid=?", (uuid,)).fetchone()
+    conn.close()
+    if not p:
+        return jsonify({"ok": False, "error": "Link no válido"}), 404
+    dni_ingresado = str(data.get("dni_numero", "")).strip().replace(".", "").replace(" ", "")
+    dni_registrado = str(p["dni_numero"]).strip().replace(".", "").replace(" ", "")
+    if dni_registrado and dni_ingresado != dni_registrado:
+        return jsonify({"ok": False, "error": "El DNI no coincide con el registrado para este trámite. Verificá los datos."}), 200
+    return jsonify({"ok": True}), 200
+
 @app.route("/api/firmar/<uuid>/enviar-sms", methods=["POST"])
 def enviar_sms(uuid):
     # Por ahora simulado — integrar Twilio o similar después
@@ -441,6 +455,12 @@ def completar_firma(uuid):
     if p["completado"]:
         conn.close()
         return jsonify({"ok": False, "error": "Ya completada"}), 400
+    # Validar DNI contra el registrado por el solicitante
+    dni_ingresado = str(data.get("dni_numero", "")).strip().replace(".", "").replace(" ", "")
+    dni_registrado = str(p["dni_numero"]).strip().replace(".", "").replace(" ", "")
+    if dni_registrado and dni_ingresado != dni_registrado:
+        conn.close()
+        return jsonify({"ok": False, "error": f"El DNI ingresado no coincide con el registrado para este trámite. Verificá los datos e intentá de nuevo."}), 400
     import os as _os
     carpeta = f"/root/cert/uploads/{uuid}"
     _os.makedirs(carpeta, exist_ok=True)
