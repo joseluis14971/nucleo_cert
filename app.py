@@ -147,6 +147,63 @@ def certificar():
     return send_from_directory("/var/www/nucleocert", "certificar.html")
 
 # ── API ──
+def enviar_email_solicitante(destinatario, nombre_sol, numero_cert, tipo_tramite, partes, documento_nombre, fecha):
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"Núcleo CERT — Trámite iniciado: {numero_cert}"
+        msg["From"] = f"Núcleo CERT <{GMAIL_USER}>"
+        msg["To"] = destinatario
+        partes_html = "".join([f"""
+          <tr>
+            <td style="padding:8px;border-bottom:1px solid #f0f0f0">{p.get('nombre','')}</td>
+            <td style="padding:8px;border-bottom:1px solid #f0f0f0">{p.get('dni_numero','')}</td>
+            <td style="padding:8px;border-bottom:1px solid #f0f0f0">{p.get('rol','')}</td>
+            <td style="padding:8px;border-bottom:1px solid #f0f0f0">{p.get('email','')}</td>
+          </tr>""" for p in partes])
+        html = f"""
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#f0f7f2;padding:32px">
+          <div style="background:#fff;border-radius:12px;padding:32px;border:1px solid #e5e7eb">
+            <div style="text-align:center;margin-bottom:24px">
+              <h1 style="color:#2d9b5a;font-size:22px;margin:0">Núcleo CERT</h1>
+              <p style="color:#5a6b57;font-size:13px;margin:4px 0">Certificación privada · Prueba permanente</p>
+            </div>
+            <p style="color:#374334;font-size:15px">Hola <strong>{nombre_sol}</strong>,</p>
+            <p style="color:#374334;font-size:14px">Usted inició el trámite de certificación <strong>{tipo_tramite}</strong> con número:</p>
+            <div style="background:#f0fdf4;border-radius:8px;padding:16px;text-align:center;margin:20px 0">
+              <div style="font-size:13px;color:#5a6b57">Número de certificado</div>
+              <div style="font-size:22px;font-weight:900;color:#2d9b5a">{numero_cert}</div>
+              <div style="font-size:12px;color:#5a6b57;margin-top:4px">Fecha: {fecha}</div>
+            </div>
+            <p style="color:#374334;font-size:13px;font-weight:600">Documento certificado:</p>
+            <p style="color:#5a6b57;font-size:13px">{documento_nombre}</p>
+            <p style="color:#374334;font-size:13px;font-weight:600;margin-top:16px">Intervinientes:</p>
+            <table style="width:100%;border-collapse:collapse;font-size:13px">
+              <tr style="background:#f0fdf4">
+                <th style="padding:8px;text-align:left">Nombre</th>
+                <th style="padding:8px;text-align:left">DNI</th>
+                <th style="padding:8px;text-align:left">Rol</th>
+                <th style="padding:8px;text-align:left">Email</th>
+              </tr>
+              {partes_html}
+            </table>
+            <div style="margin-top:24px;padding:16px;background:#fef9c3;border-radius:8px;font-size:12px;color:#78400a">
+              Una vez que todos los firmantes completen el proceso de verificación de identidad, el hash SHA-256 del documento será anclado en la blockchain de Núcleo NKL y Bitcoin como prueba permanente e inalterable.
+            </div>
+            <p style="color:#9aab97;font-size:11px;line-height:1.6;text-align:center;margin-top:20px">
+              Núcleo CERT es un servicio de certificación privada de fecha cierta e identidad de firmantes.<br>
+              No reemplaza la escritura pública en los actos que la ley argentina exige dicha forma (art. 1017 CCCN).
+            </p>
+          </div>
+        </div>"""
+        msg.attach(MIMEText(html, "html"))
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(GMAIL_USER, GMAIL_PASS)
+            server.sendmail(GMAIL_USER, destinatario, msg.as_string())
+        return True
+    except Exception as e:
+        print(f"Error email solicitante: {e}")
+        return False
+
 @app.route("/api/paises", methods=["GET"])
 def get_paises():
     conn = get_db()
@@ -252,6 +309,19 @@ def nuevo_tramite():
                 )
                 emails_enviados.append({"email": p["email"], "enviado": ok})
 
+    # Email al solicitante
+    if licencia_nkl and data.get("solicitante_email"):
+        fecha_str = datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC")
+        partes_data = [{"nombre": p["nombre"], "dni_numero": p.get("dni",""), "rol": p["rol"], "email": p.get("email","")} for p in data["partes"]]
+        enviar_email_solicitante(
+            data["solicitante_email"],
+            data["solicitante_nombre"],
+            numero_cert,
+            data["tipo_tramite"],
+            partes_data,
+            data.get("documento_nombre", "Documento PDF"),
+            fecha_str
+        )
     return jsonify({
         "ok": True,
         "numero_cert": numero_cert,
