@@ -391,6 +391,66 @@ def buscar_por_dni():
     """, (dni, f"%{nombre}%")).fetchall()
     conn.close()
     return jsonify({"resultados": [dict(p) for p in partes]})
+@app.route("/api/confirmar-tramite/<numero_cert>", methods=["GET"])
+def confirmar_tramite(numero_cert):
+    conn = get_db()
+    t = conn.execute("SELECT * FROM tramites WHERE numero_cert=?", (numero_cert,)).fetchone()
+    if not t:
+        conn.close()
+        return "<h2>Trámite no encontrado</h2>", 404
+    conn.execute("UPDATE tramites SET estado='confirmado', fecha_certificacion=? WHERE numero_cert=?",
+        (datetime.utcnow().isoformat(), numero_cert))
+    conn.commit()
+    conn.close()
+    return f"""<html><body style="font-family:Arial;text-align:center;padding:60px">
+        <h2 style="color:#2d9b5a">✅ Trámite confirmado</h2>
+        <p>El trámite <strong>{numero_cert}</strong> fue confirmado.</p>
+        <p style="color:#5a6b57;font-size:14px">El anclaje en blockchain NKL y Bitcoin se procesará en las próximas horas.</p>
+        <a href="https://nucleocert.com" style="color:#2d9b5a">Volver a Núcleo CERT</a>
+    </body></html>"""
+
+@app.route("/api/anular-firma/<uuid>", methods=["GET"])
+def anular_firma(uuid):
+    solicitante_email = request.args.get("sol", "")
+    conn = get_db()
+    p = conn.execute("SELECT * FROM partes WHERE link_uuid=?", (uuid,)).fetchone()
+    if not p:
+        conn.close()
+        return "<h2>Link no válido</h2>", 404
+    tramite_id = p["tramite_id"]
+    tramite = conn.execute("SELECT * FROM tramites WHERE id=?", (tramite_id,)).fetchone()
+    # Resetear la firma
+    conn.execute("UPDATE partes SET completado=0, firma_timestamp=NULL, sms_verificado=0 WHERE link_uuid=?", (uuid,))
+    conn.commit()
+    numero_cert = tramite["numero_cert"]
+    firmante_nombre = p["nombre_completo"]
+    firmante_email = p["email"]
+    conn.close()
+    # Notificar al firmante
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"Núcleo CERT — Tu firma fue anulada ({numero_cert})"
+        msg["From"] = f"Núcleo CERT <{GMAIL_USER}>"
+        msg["To"] = firmante_email
+        html = f"""<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px">
+          <h2 style="color:#dc2626">Firma anulada</h2>
+          <p>Hola <strong>{firmante_nombre}</strong>,</p>
+          <p>El solicitante del trámite <strong>{numero_cert}</strong> anuló tu firma porque los datos o fotos no coincidían.</p>
+          <p>Por favor volvé a completar el proceso desde el link original que recibiste por email.</p>
+          <p style="color:#9aab97;font-size:11px">Núcleo CERT — nucleocert.com</p>
+        </div>"""
+        msg.attach(MIMEText(html, "html"))
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(GMAIL_USER, GMAIL_PASS)
+            server.sendmail(GMAIL_USER, firmante_email, msg.as_string())
+    except Exception as e:
+        print(f"Error email anulacion: {e}")
+    return f"""<html><body style="font-family:Arial;text-align:center;padding:60px">
+        <h2 style="color:#2d9b5a">✅ Firma anulada correctamente</h2>
+        <p>Se notificó a <strong>{firmante_nombre}</strong> para que repita el proceso.</p>
+        <p>Número de trámite: <strong>{numero_cert}</strong></p>
+        <a href="https://nucleocert.com" style="color:#2d9b5a">Volver a Núcleo CERT</a>
+    </body></html>"""
 
 if __name__ == "__main__":
     init_db()
@@ -530,8 +590,11 @@ def completar_firma(uuid):
             </div>
             <p style="color:#374334;font-size:13px;font-weight:600">Por favor verificá que las fotos correspondan a la persona indicada:</p>
             <p style="color:#374334;font-size:13px">Las fotos del DNI y selfie se encuentran adjuntas a este email.</p>
-            <div style="background:#fef9c3;border-radius:8px;padding:14px;font-size:13px;color:#78400a;margin-top:20px">
-              Si las fotos no corresponden a <strong>{firmante_nombre}</strong> o el DNI no es válido, contactá a Núcleo CERT para cancelar esta firma.
+            <div style="text-align:center;margin:24px 0">
+              <a href="https://nucleocert.com/api/anular-firma/{uuid}?sol={solicitante_email}" style="background:#dc2626;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:700;display:inline-block;margin-right:12px">❌ Anular esta firma</a>
+            </div>
+            <div style="background:#fef9c3;border-radius:8px;padding:14px;font-size:13px;color:#78400a;margin-top:8px">
+              Si las fotos no corresponden a <strong>{firmante_nombre}</strong> o el DNI no es válido, hacé clic en "Anular esta firma". El firmante recibirá una notificación para repetir el proceso.
             </div>
             <p style="color:#9aab97;font-size:11px;line-height:1.6;text-align:center;margin-top:20px">
               Núcleo CERT — nucleocert.com<br>
@@ -554,4 +617,42 @@ def completar_firma(uuid):
         print(f"Email fotos enviado a {solicitante_email}")
     except Exception as e:
         print(f"Error email fotos solicitante: {e}")
+    # Si todos firmaron, mandar email de confirmacion al solicitante
+    if total == completados:
+        try:
+            confirm_url = f"https://nucleocert.com/api/confirmar-tramite/{numero_cert}?sol={tramite['solicitante_email']}"
+            msg2 = MIMEMultipart("alternative")
+            msg2["Subject"] = f"Núcleo CERT — ¡Todos firmaron! Confirmá el trámite {numero_cert}"
+            msg2["From"] = f"Núcleo CERT <{GMAIL_USER}>"
+            msg2["To"] = tramite["solicitante_email"]
+            html2 = f"""
+            <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#f0f7f2;padding:32px">
+              <div style="background:#fff;border-radius:12px;padding:32px;border:1px solid #e5e7eb">
+                <div style="text-align:center;margin-bottom:24px">
+                  <h1 style="color:#2d9b5a;font-size:22px;margin:0">Núcleo CERT</h1>
+                </div>
+                <p style="color:#374334;font-size:15px">Hola <strong>{tramite['solicitante_nombre']}</strong>,</p>
+                <p style="color:#374334;font-size:14px">Todos los firmantes del trámite <strong>{numero_cert}</strong> completaron su verificación de identidad.</p>
+                <div style="background:#f0fdf4;border-radius:8px;padding:16px;text-align:center;margin:20px 0">
+                  <div style="font-size:13px;color:#5a6b57">Trámite</div>
+                  <div style="font-size:20px;font-weight:900;color:#2d9b5a">{numero_cert}</div>
+                  <div style="font-size:13px;color:#5a6b57;margin-top:4px">{tramite['tipo_tramite']} — {total} firmante{'s' if total > 1 else ''}</div>
+                </div>
+                <p style="color:#374334;font-size:13px">Si verificaste las identidades de todos los firmantes y estás conforme, confirmá el trámite para anclar el documento en blockchain:</p>
+                <div style="text-align:center;margin:24px 0">
+                  <a href="{confirm_url}" style="background:#2d9b5a;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:16px;font-weight:700;display:inline-block">✅ Confirmar y anclar en blockchain</a>
+                </div>
+                <p style="color:#9aab97;font-size:11px;line-height:1.6;text-align:center;margin-top:20px">
+                  Núcleo CERT — nucleocert.com<br>
+                  No reemplaza la escritura pública en los actos que la ley argentina exige dicha forma (art. 1017 CCCN).
+                </p>
+              </div>
+            </div>"""
+            msg2.attach(MIMEText(html2, "html"))
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+                server.login(GMAIL_USER, GMAIL_PASS)
+                server.sendmail(GMAIL_USER, tramite["solicitante_email"], msg2.as_string())
+            print(f"Email confirmacion enviado a {tramite['solicitante_email']}")
+        except Exception as e:
+            print(f"Error email confirmacion: {e}")
     return jsonify({"ok": True, "numero_cert": numero_cert, "total": total, "completados": completados})
