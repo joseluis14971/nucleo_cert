@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Certificar un documento — Núcleo CERT</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f7f2;color:#111;min-height:100vh}
+nav{background:#fff;border-bottom:1px solid #e5e7eb;padding:14px 32px;display:flex;align-items:center;justify-content:space-between}
+.nav-logo{font-weight:700;font-size:1rem;color:#111;text-decoration:none}
+.nav-logo span{color:#2d9b5a}
+.nav-back{font-size:.85rem;color:#2d9b5a;text-decoration:none;display:flex;align-items:center;gap:6px}
+.nav-back:hover{text-decoration:underline}
+.wizard-wrap{max-width:680px;margin:40px auto;padding:0 20px 60px}
+.progress-bar{background:#e5e7eb;border-radius:99px;height:6px;margin-bottom:8px}
+.progress-fill{background:#2d9b5a;border-radius:99px;height:6px;transition:width .3s}
+.progress-label{font-size:.78rem;color:#5a6b57;margin-bottom:28px}
+.card{background:#fff;border-radius:14px;border:1px solid #e5e7eb;padding:36px 32px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+.step-eyebrow{font-size:.72rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#2d9b5a;margin-bottom:8px}
+.step-title{font-size:1.35rem;font-weight:700;margin-bottom:6px}
+.step-sub{font-size:.9rem;color:#5a6b57;margin-bottom:28px;line-height:1.6}
+.field{margin-bottom:20px}
+.field label{display:block;font-size:.82rem;font-weight:600;color:#374334;margin-bottom:6px}
+.field input,.field select,.field textarea{width:100%;border:1.5px solid #d1d5db;border-radius:8px;padding:11px 14px;font-size:.92rem;font-family:inherit;color:#111;background:#fff;transition:border-color .15s}
+.field input:focus,.field select:focus{outline:none;border-color:#2d9b5a}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.field-hint{font-size:.75rem;color:#9aab97;margin-top:4px}
+.radio-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+.radio-card{border:1.5px solid #e5e7eb;border-radius:10px;padding:16px;cursor:pointer;transition:border-color .15s,background .15s}
+.radio-card:hover{border-color:#2d9b5a}
+.radio-card.selected{border-color:#2d9b5a;background:#f0f7f2}
+.radio-card input{display:none}
+.radio-card-icon{font-size:1.3rem;margin-bottom:6px}
+.radio-card-label{font-weight:600;font-size:.88rem}
+.radio-card-sub{font-size:.75rem;color:#5a6b57;margin-top:2px}
+.licencia-box{border:1.5px solid #e5e7eb;border-radius:10px;padding:18px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:border-color .15s;margin-bottom:12px}
+.licencia-box:hover{border-color:#2d9b5a}
+.licencia-box.active{border-color:#2d9b5a;background:#f0f7f2}
+.licencia-check{width:22px;height:22px;border-radius:50%;border:2px solid #d1d5db;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.licencia-box.active .licencia-check{background:#2d9b5a;border-color:#2d9b5a;color:#fff;font-size:.75rem}
+.minero-box{background:#f8fdf9;border:1.5px solid #d1fae5;border-radius:10px;padding:20px;margin-top:16px}
+.minero-box h4{font-size:.9rem;font-weight:700;color:#374334;margin-bottom:14px}
+.parte-card{border:1.5px solid #e5e7eb;border-radius:10px;padding:18px;margin-bottom:12px;position:relative}
+.parte-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.parte-num{font-size:.78rem;font-weight:700;color:#2d9b5a;text-transform:uppercase;letter-spacing:.06em}
+.parte-remove{background:none;border:none;color:#9aab97;cursor:pointer;font-size:.82rem;padding:2px 6px}
+.parte-remove:hover{color:#e53e3e}
+.btn-add-parte{width:100%;border:1.5px dashed #c4cec1;background:transparent;border-radius:8px;padding:12px;color:#5a6b57;font-size:.88rem;cursor:pointer;transition:all .15s}
+.btn-add-parte:hover{border-color:#2d9b5a;color:#2d9b5a}
+.cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.cat-btn{border:1.5px solid #e5e7eb;background:#fff;border-radius:8px;padding:14px 10px;text-align:center;cursor:pointer;transition:all .15s}
+.cat-btn:hover{border-color:#2d9b5a}
+.cat-btn.selected{border-color:#2d9b5a;background:#f0f7f2}
+.cat-btn-icon{font-size:1.3rem;margin-bottom:4px}
+.cat-btn-label{font-size:.78rem;font-weight:600;color:#374334}
+.modo-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+.modo-card{border:1.5px solid #e5e7eb;border-radius:10px;padding:20px;cursor:pointer;transition:all .15s}
+.modo-card:hover{border-color:#2d9b5a}
+.modo-card.selected{border-color:#2d9b5a;background:#f0f7f2}
+.modo-card h4{font-size:.92rem;font-weight:700;margin-bottom:4px}
+.modo-card p{font-size:.78rem;color:#5a6b57;line-height:1.5}
+.resumen-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f0f7f2;font-size:.88rem}
+.resumen-item:last-child{border-bottom:none}
+.resumen-label{color:#5a6b57}
+.resumen-value{font-weight:600;color:#111}
+.resumen-total{background:#f0f7f2;border-radius:10px;padding:16px;margin-top:16px;display:flex;justify-content:space-between;align-items:center}
+.resumen-total-label{font-size:.9rem;font-weight:600}
+.resumen-total-monto{font-size:1.4rem;font-weight:800;color:#2d9b5a}
+.badge-gratis{background:#dcfce7;color:#15803d;font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:99px}
+.success-icon{width:64px;height:64px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.8rem;margin:0 auto 20px}
+.cert-number{background:#f0f7f2;border:1.5px solid #2d9b5a;border-radius:10px;padding:16px;text-align:center;margin:20px 0}
+.cert-number-label{font-size:.75rem;color:#5a6b57;margin-bottom:4px}
+.cert-number-value{font-size:1.2rem;font-weight:800;color:#2d9b5a;letter-spacing:.05em}
+.links-list{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+.link-item{background:#f8fdf9;border:1px solid #d1fae5;border-radius:8px;padding:12px 14px;font-size:.82rem}
+.link-item-rol{font-weight:700;color:#374334;margin-bottom:2px}
+.link-item-url{color:#2d9b5a;word-break:break-all;font-size:.78rem}
+.btn-row{display:flex;gap:12px;margin-top:28px;justify-content:space-between}
+.btn-primary{background:#2d9b5a;color:#fff;border:none;border-radius:8px;padding:13px 28px;font-size:.95rem;font-weight:600;cursor:pointer;transition:background .15s;flex:1}
+.btn-primary:hover{background:#1e7a43}
+.btn-primary:disabled{background:#c4cec1;cursor:not-allowed}
+.btn-secondary{background:#fff;color:#374334;border:1.5px solid #d1d5db;border-radius:8px;padding:13px 24px;font-size:.95rem;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-secondary:hover{border-color:#2d9b5a;color:#2d9b5a}
+.disclaimer{background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;font-size:.76rem;color:#78400a;line-height:1.6;margin-top:20px}
+.error-msg{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;font-size:.82rem;color:#991b1b;margin-bottom:16px;display:none}
+.success-msg{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;font-size:.82rem;color:#15803d;margin-bottom:16px;display:none}
+.validando{background:#f0f7f2;border:1px solid #d1fae5;border-radius:8px;padding:10px 14px;font-size:.82rem;color:#2d9b5a;margin-bottom:16px;display:none}
+@media(max-width:580px){
+  .card{padding:24px 18px}
+  .field-row{grid-template-columns:1fr}
+  .cat-grid{grid-template-columns:repeat(2,1fr)}
+  .radio-grid,.modo-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<nav>
+  <a class="nav-logo" href="/">Núcleo <span>CERT</span></a>
+  <a class="nav-back" href="/">← Volver al inicio</a>
+</nav>
+<div class="wizard-wrap">
+  <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:12.5%"></div></div>
+  <div class="progress-label" id="progressLabel">Paso 1 de 8</div>
+  <div class="card" id="wizardCard"></div>
+</div>
+<script>
+const API = "/api";
+const state = {
+  step: 1,
+  pais: "AR",
+  tipo_solicitante: "",
+  solicitante_nombre: "",
+  solicitante_doc: "",
+  solicitante_email: "",
+  solicitante_telefono: "",
+  licencia_nkl: false,
+  minero_username: "",
+  minero_key: "",
+  minero_validado: false,
+  categoria: "",
+  tipo_tramite: "",
+  modo: "presencial",
+  partes: [],
+  documento_hash: "",
+  documento_archivo: "",
+  documento_nombre: "",
+  resultado: null
+};
+
+const TRAMITES = {
+  "Inmobiliario": ["Boleto de compraventa","Contrato de locación","Cesión de derechos","Poder especial irrevocable","Seña / Reserva","Rescisión","Permuta","Usufructo","Donación","Hipoteca","Otro (Inmobiliario)"],
+  "Automotor": ["Compraventa de vehículo","Cesión de dominio","Poder para transferencia","Prenda sobre vehículo","Baja de dominio","Otro (Automotor)"],
+  "Embarcaciones": ["Compraventa náutica","Cesión de embarcación","Poder transferencia náutica","Prenda naval","Otro (Embarcaciones)"],
+  "Societario": ["Acta asamblea ordinaria","Acta asamblea extraordinaria","Acta de directorio","Designación de autoridades","Reforma de estatuto","Disolución societaria","Fusión / Escisión","Otro (Societario)"],
+  "Contratos": ["Contrato de servicios","Acuerdo de confidencialidad","Contrato de obra","Carta de intención","Reconocimiento de deuda","Acuerdo extrajudicial","Otro (Contratos)"],
+  "Personal": ["Declaración jurada","Consentimiento médico","Autorización bancaria","Otro (Personal)"]
+};
+
+const ROLES = ["Comprador","Vendedor","Poderdante","Apoderado","Locador","Locatario","Cedente","Cesionario","Presidente","Secretario","Accionista","Garante","Testigo","Firmante"];
+
+function render() {
+  const pct = (state.step / 9) * 100;
+  document.getElementById("progressFill").style.width = pct + "%";
+  document.getElementById("progressLabel").textContent = `Paso ${state.step} de 9`;
+  const card = document.getElementById("wizardCard");
+  switch(state.step) {
+    case 1: card.innerHTML = renderPais(); break;
+    case 2: card.innerHTML = renderSolicitante(); break;
+    case 3: card.innerHTML = renderLicencia(); break;
+    case 4: card.innerHTML = renderCategoria(); break;
+    case 5: card.innerHTML = renderDocumento(); break;
+    case 6: card.innerHTML = renderPartes(); break;
+    case 7: card.innerHTML = renderModo(); break;
+    case 8: card.innerHTML = renderResumen(); break;
+    case 9: card.innerHTML = renderExito(); break;
+  }
+}
+
+function renderPais() {
+  return `
+    <div class="step-eyebrow">Paso 1</div>
+    <div class="step-title">Seleccioná tu país</div>
+    <div class="step-sub">El proceso y las condiciones legales varían según el país.</div>
+    <div class="field">
+      <label>País</label>
+      <select id="pais" onchange="state.pais=this.value">
+        <option value="AR" selected>🇦🇷 Argentina — Activo</option>
+        <option disabled>🇲🇽 México — Próximamente</option>
+        <option disabled>🇨🇴 Colombia — Próximamente</option>
+        <option disabled>🇨🇱 Chile — Próximamente</option>
+        <option disabled>🇵🇪 Perú — Próximamente</option>
+        <option disabled>🇺🇾 Uruguay — Próximamente</option>
+      </select>
+    </div>
+    <div class="disclaimer">
+      <strong>Argentina:</strong> Núcleo CERT es un servicio de certificación privada de fecha cierta e identidad de firmantes. No reemplaza la escritura pública en los actos que la ley argentina exige dicha forma (art. 1017 CCCN). Para consultas sobre validez legal consulte a un profesional habilitado.
+    </div>
+    <div class="btn-row">
+      <div></div>
+      <button class="btn-primary" onclick="next()">Continuar →</button>
+    </div>`;
+}
+
+function renderSolicitante() {
+  return `
+    <div class="step-eyebrow">Paso 2</div>
+    <div class="step-title">¿Quién inicia el trámite?</div>
+    <div class="step-sub">El solicitante es quien carga el documento y coordina las firmas.</div>
+    <div class="field">
+      <label>Tipo de solicitante</label>
+      <select id="tipo_sol" onchange="selectTipoSel(this.value)">
+        <option value="">— Seleccioná —</option>
+        <option>Inmobiliaria</option>
+        <option>Martillero público</option>
+        <option>Abogado / Estudio jurídico</option>
+        <option>Contador / Estudio contable</option>
+        <option>Empresa / Sociedad comercial</option>
+        <option>Empresa de transporte</option>
+        <option>Importación / Exportación</option>
+        <option>Club deportivo</option>
+        <option>Consorcio de propietarios</option>
+        <option>ONG / Asociación civil</option>
+        <option>Fundación</option>
+        <option>Cooperativa</option>
+        <option>Particular</option>
+        <option value="Otros">Otros</option>
+      </select>
+    </div>
+    <div class="field" id="otrosField" style="display:none">
+      <label>Especificá el tipo</label>
+      <input id="tipo_otro" type="text" placeholder="Ej: Sindicato, Mutual, etc." oninput="state.tipo_solicitante=this.value">
+    </div>
+    <div class="field"><label>Nombre completo o razón social</label><input id="sol_nombre" type="text" value="${state.solicitante_nombre}" placeholder="Como figura en el documento"></div>
+    <div class="field-row">
+      <div class="field"><label>DNI / CUIT</label><input id="sol_doc" type="text" value="${state.solicitante_doc}" placeholder="Sin puntos ni espacios"></div>
+      <div class="field"><label>Teléfono</label><input id="sol_tel" type="tel" value="${state.solicitante_telefono}" placeholder="11 1234-5678"></div>
+    </div>
+    <div class="field"><label>Email</label><input id="sol_email" type="email" value="${state.solicitante_email}" placeholder="tu@email.com"></div>
+    <div class="error-msg" id="errSol">Completá todos los campos obligatorios.</div>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="prev()">← Atrás</button>
+      <button class="btn-primary" onclick="validarSolicitante()">Continuar →</button>
+    </div>`;
+}
+
+function renderLicencia() {
+  return `
+    <div class="step-eyebrow">Paso 3</div>
+    <div class="step-title">¿Tenés licencia activa del ecosistema Núcleo?</div>
+    <div class="step-sub">Los mineros de NKL y usuarios del CRM de Núcleo con licencia activa no pagan por los certificados.</div>
+    <div>
+      <div class="licencia-box ${state.licencia_nkl?'active':''}" onclick="setLicencia(true)">
+        <div class="licencia-check">${state.licencia_nkl?'✓':''}</div>
+        <div>
+          <div style="font-weight:700;font-size:.93rem">Sí, soy minero NKL o usuario del CRM con licencia activa</div>
+          <div style="font-size:.78rem;color:#5a6b57;margin-top:2px">Este trámite será <strong style="color:#2d9b5a">gratuito</strong></div>
+        </div>
+      </div>
+      ${state.licencia_nkl ? `
+      <div class="minero-box">
+        <h4>Verificación de licencia NKL</h4>
+        <div class="field"><label>Usuario de minería</label><input id="minero_user" type="text" value="${state.minero_username}" placeholder="Tu usuario del pool NKL"></div>
+        <div class="field"><label>API Key</label><input id="minero_key" type="text" value="${state.minero_key}" placeholder="Tu clave del pool NKL"></div>
+        <div class="error-msg" id="errMinero">Usuario o key incorrectos. Verificá tus datos.</div>
+        <div class="validando" id="validandoMinero">Verificando licencia...</div>
+        <div class="success-msg" id="okMinero">✓ Licencia verificada — ${state.minero_username}</div>
+      </div>` : ""}
+      <div class="licencia-box ${!state.licencia_nkl?'active':''}" style="margin-top:12px" onclick="setLicencia(false)">
+        <div class="licencia-check">${!state.licencia_nkl?'✓':''}</div>
+        <div>
+          <div style="font-weight:700;font-size:.93rem">Pago por el servicio</div>
+          <div style="font-size:.78rem;color:#5a6b57;margin-top:2px">$10.000 ARS por firmante interviniente</div>
+        </div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="prev()">← Atrás</button>
+      <button class="btn-primary" onclick="continuarLicencia()">Continuar →</button>
+    </div>`;
+}
+
+function renderCategoria() {
+  return `
+    <div class="step-eyebrow">Paso 4</div>
+    <div class="step-title">¿Qué tipo de documento vas a certificar?</div>
+    <div class="step-sub">Seleccioná la categoría y luego el tipo de trámite.</div>
+    <div class="cat-grid">
+      ${Object.keys(TRAMITES).map(cat => `
+        <div class="cat-btn ${state.categoria===cat?'selected':''}" onclick="selectCat('${cat}')">
+          <div class="cat-btn-icon">${{Inmobiliario:'🏠',Automotor:'🚗',Embarcaciones:'⚓',Societario:'🏢',Contratos:'📋',Personal:'👤'}[cat]}</div>
+          <div class="cat-btn-label">${cat}</div>
+        </div>`).join("")}
+    </div>
+    ${state.categoria ? `
+    <div class="field">
+      <label>Tipo de trámite</label>
+      <select id="tipo_tramite" onchange="state.tipo_tramite=this.value">
+        <option value="">— Seleccioná —</option>
+        ${TRAMITES[state.categoria].map(t=>`<option value="${t}" ${state.tipo_tramite===t?'selected':''}>${t}</option>`).join("")}
+      </select>
+    </div>` : ""}
+    <div class="error-msg" id="errCat">Seleccioná una categoría y tipo de trámite.</div>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="prev()">← Atrás</button>
+      <button class="btn-primary" onclick="validarCategoria()">Continuar →</button>
+    </div>`;
+}
+
+function renderDocumento() {
+  return `
+    <div class="step-eyebrow">Paso 5</div>
+    <div class="step-title">Subí el documento a certificar</div>
+    <div class="step-sub">El archivo PDF que todos van a firmar. Solo vos y los firmantes invitados podrán acceder a él.</div>
+
+    <div style="background:#f0f7f2;border:1.5px solid #d1fae5;border-radius:10px;padding:16px 18px;margin-bottom:20px;font-size:.83rem;color:#374334;line-height:1.7">
+      🔒 <strong>Tu documento es privado.</strong> El archivo queda resguardado en los servidores de Núcleo CERT bajo acceso restringido. Solo pueden acceder el solicitante y los firmantes invitados a través de su link individual. El contenido nunca es público ni indexado. Lo que sí queda registrado en blockchain es el hash SHA-256 del documento — una huella digital que permite verificar su integridad sin revelar su contenido.
+    </div>
+
+    <div class="field">
+      <label>Documento PDF</label>
+      <div id="dropZone" style="border:2px dashed #c4cec1;border-radius:10px;padding:36px;text-align:center;cursor:pointer;transition:all .2s;background:#fafafa" onclick="document.getElementById('pdfInput').click()" ondragover="event.preventDefault();this.style.borderColor='#2d9b5a'" ondragleave="this.style.borderColor='#c4cec1'" ondrop="handleDrop(event)">
+        <div style="font-size:2rem;margin-bottom:8px">📄</div>
+        <div style="font-weight:600;font-size:.9rem;color:#374334" id="dropLabel">Hacé clic o arrastrá el PDF aquí</div>
+        <div style="font-size:.78rem;color:#9aab97;margin-top:4px">Solo archivos PDF. Máximo 10MB.</div>
+      </div>
+      <input type="file" id="pdfInput" accept=".pdf" style="display:none" onchange="subirPDF(this.files[0])">
+    </div>
+
+    ${state.documento_hash ? `
+    <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;padding:16px;margin-bottom:16px">
+      <div style="font-size:.78rem;font-weight:600;color:#15803d;margin-bottom:4px">✓ Documento cargado — ${state.documento_nombre}</div>
+      <div style="font-size:.72rem;color:#5a6b57;word-break:break-all">SHA-256: ${state.documento_hash}</div>
+    </div>` : ""}
+
+    <div id="uploadProgress" style="display:none;background:#f0f7f2;border-radius:8px;padding:12px;font-size:.83rem;color:#2d9b5a;margin-bottom:16px">Subiendo documento...</div>
+    <div class="error-msg" id="errDoc">Solo se aceptan archivos PDF de hasta 10MB.</div>
+
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="prev()">← Atrás</button>
+      <button class="btn-primary" onclick="validarDocumento()">Continuar →</button>
+    </div>`;
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').style.borderColor = '#c4cec1';
+  const file = e.dataTransfer.files[0];
+  if (file) subirPDF(file);
+}
+
+async function subirPDF(file) {
+  if (!file || !file.name.endsWith('.pdf')) {
+    document.getElementById('errDoc').style.display = 'block';
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    document.getElementById('errDoc').textContent = 'El archivo supera los 10MB.';
+    document.getElementById('errDoc').style.display = 'block';
+    return;
+  }
+  document.getElementById('errDoc').style.display = 'none';
+  document.getElementById('uploadProgress').style.display = 'block';
+  document.getElementById('dropLabel').textContent = file.name;
+
+  const formData = new FormData();
+  formData.append('archivo', file);
+
+  try {
+    const res = await fetch('/api/upload-documento', { method: 'POST', body: formData });
+    const data = await res.json();
+    document.getElementById('uploadProgress').style.display = 'none';
+    if (data.ok) {
+      state.documento_hash = data.hash;
+      state.documento_archivo = data.archivo;
+      state.documento_nombre = file.name;
+      render();
+    } else {
+      document.getElementById('errDoc').textContent = data.error || 'Error al subir el archivo.';
+      document.getElementById('errDoc').style.display = 'block';
+    }
+  } catch(e) {
+    document.getElementById('uploadProgress').style.display = 'none';
+    document.getElementById('errDoc').textContent = 'Error de conexión. Intentá de nuevo.';
+    document.getElementById('errDoc').style.display = 'block';
+  }
+}
+
+function validarDocumento() {
+  if (!state.documento_hash) {
+    document.getElementById('errDoc').textContent = 'Tenés que subir el documento PDF antes de continuar.';
+    document.getElementById('errDoc').style.display = 'block';
+    return;
+  }
+  next();
+}
+
+function renderPartes() {
+  if (state.partes.length === 0) state.partes.push({nombre:"",dni:"",rol:"Firmante",email:""});
+  return `
+    <div class="step-eyebrow">Paso 6</div>
+    <div class="step-title">¿Quiénes firman el documento?</div>
+    <div class="step-sub">Agregá cada parte con su nombre, DNI, email y rol. El email es necesario para enviarle el link de firma.</div>
+    <div id="partesContainer">
+      ${state.partes.map((p,i) => `
+        <div class="parte-card">
+          <div class="parte-card-header">
+            <span class="parte-num">Firmante ${i+1}</span>
+            ${i>0?`<button class="parte-remove" onclick="removeParte(${i})">✕ Quitar</button>`:""}
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Nombre completo</label><input type="text" value="${p.nombre}" oninput="state.partes[${i}].nombre=this.value" placeholder="Como figura en el DNI"></div>
+            <div class="field"><label>DNI</label><input type="text" value="${p.dni}" oninput="state.partes[${i}].dni=this.value" placeholder="Sin puntos"></div>
+          </div>
+          <div class="field"><label>Email</label><input type="email" value="${p.email}" oninput="state.partes[${i}].email=this.value" placeholder="email@ejemplo.com"><div class="field-hint">Se enviará el link de firma a esta dirección</div></div>
+          <div class="field">
+            <label>Rol en el documento</label>
+            <select onchange="state.partes[${i}].rol=this.value">
+              ${ROLES.map(r=>`<option value="${r}" ${p.rol===r?'selected':''}>${r}</option>`).join("")}
+            </select>
+          </div>
+        </div>`).join("")}
+    </div>
+    <button class="btn-add-parte" onclick="addParte()">+ Agregar otro firmante</button>
+    <div class="error-msg" id="errPartes">Completá nombre, DNI y email de todos los firmantes.</div>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="prev()">← Atrás</button>
+      <button class="btn-primary" onclick="validarPartes()">Continuar →</button>
+    </div>`;
+}
+
+function renderModo() {
+  return `
+    <div class="step-eyebrow">Paso 7</div>
+    <div class="step-title">¿Cómo van a firmar?</div>
+    <div class="step-sub">Elegí el modo según si las partes están en el mismo lugar o en distintos lugares.</div>
+    <div class="modo-grid">
+      <div class="modo-card ${state.modo==='presencial'?'selected':''}" onclick="state.modo='presencial';render()">
+        <div style="font-size:1.4rem;margin-bottom:8px">🤝</div>
+        <h4>Presencial</h4>
+        <p>Todos firman en el mismo lugar. Se pasa el dispositivo de mano en mano.</p>
+      </div>
+      <div class="modo-card ${state.modo==='remoto'?'selected':''}" onclick="state.modo='remoto';render()">
+        <div style="font-size:1.4rem;margin-bottom:8px">📱</div>
+        <h4>Remoto</h4>
+        <p>Cada parte firma desde su propio celular. Reciben un link por email.</p>
+      </div>
+    </div>
+    ${state.modo==='remoto'?`<div style="background:#f0f7f2;border-radius:8px;padding:12px 14px;font-size:.82rem;color:#374334;line-height:1.6">Cada firmante recibirá un link único por email. El link expira a las 72hs.</div>`:""}
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="prev()">← Atrás</button>
+      <button class="btn-primary" onclick="next()">Continuar →</button>
+    </div>`;
+}
+
+function renderResumen() {
+  const monto = state.licencia_nkl ? 0 : state.partes.length * 10000;
+  return `
+    <div class="step-eyebrow">Paso 8</div>
+    <div class="step-title">Revisá antes de confirmar</div>
+    <div class="step-sub">Verificá que todos los datos sean correctos.</div>
+    <div class="resumen-item"><span class="resumen-label">País</span><span class="resumen-value">🇦🇷 Argentina</span></div>
+    <div class="resumen-item"><span class="resumen-label">Solicitante</span><span class="resumen-value">${state.solicitante_nombre}</span></div>
+    <div class="resumen-item"><span class="resumen-label">Tipo</span><span class="resumen-value">${state.tipo_solicitante}</span></div>
+    <div class="resumen-item"><span class="resumen-label">Trámite</span><span class="resumen-value">${state.tipo_tramite}</span></div>
+    <div class="resumen-item"><span class="resumen-label">Documento</span><span class="resumen-value" style="font-size:.78rem;color:#2d9b5a">${state.documento_nombre}</span></div>
+    <div class="resumen-item"><span class="resumen-label">Categoría</span><span class="resumen-value">${state.categoria}</span></div>
+    <div class="resumen-item"><span class="resumen-label">Modo</span><span class="resumen-value">${state.modo==='presencial'?'🤝 Presencial':'📱 Remoto'}</span></div>
+    <div class="resumen-item"><span class="resumen-label">Firmantes</span><span class="resumen-value">${state.partes.length} persona${state.partes.length>1?'s':''}</span></div>
+    <div style="margin-top:8px;margin-bottom:4px">
+      ${state.partes.map(p=>`<div style="font-size:.82rem;color:#5a6b57;padding:3px 0">· ${p.nombre} (${p.rol}) — ${p.email}</div>`).join("")}
+    </div>
+    ${state.licencia_nkl ? `<div class="resumen-item"><span class="resumen-label">Licencia</span><span class="resumen-value" style="color:#2d9b5a">✓ Minero NKL — ${state.minero_username}</span></div>` : ""}
+    <div class="resumen-total">
+      <span class="resumen-total-label">Total a pagar</span>
+      ${state.licencia_nkl ? '<span class="badge-gratis">GRATIS — Licencia NKL</span>' : `<span class="resumen-total-monto">$${(state.partes.length * 10000).toLocaleString('es-AR')} ARS</span>`}
+    </div>
+    <div class="error-msg" id="errResumen">Error al procesar. Intentá de nuevo.</div>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="prev()">← Atrás</button>
+      <button class="btn-primary" id="btnConfirmar" onclick="confirmar()">
+        ${state.licencia_nkl ? 'Confirmar y certificar →' : 'Confirmar y pagar →'}
+      </button>
+    </div>`;
+}
+
+function renderExito() {
+  const r = state.resultado;
+  const emailsEnviados = r.emails_enviados && r.emails_enviados.length > 0;
+  return `
+    <div style="text-align:center;padding:8px 0 16px">
+      <div class="success-icon">✓</div>
+      <div class="step-title">¡Trámite iniciado!</div>
+      <div class="step-sub">
+        ${state.licencia_nkl && emailsEnviados
+          ? 'Los emails con los links de firma fueron enviados a cada parte.'
+          : state.licencia_nkl
+          ? 'El trámite fue creado. Compartí los links de firma con cada parte.'
+          : 'Una vez confirmado el pago, se enviarán los links de firma por email a cada parte.'}
+      </div>
+    </div>
+    <div class="cert-number">
+      <div class="cert-number-label">Número de certificado</div>
+      <div class="cert-number-value">${r.numero_cert}</div>
+    </div>
+    ${r.monto_total === 0 ? '<div style="background:#dcfce7;border-radius:8px;padding:12px;text-align:center;font-size:.85rem;color:#15803d;font-weight:600;margin-bottom:16px">✓ Gratuito — Licencia Núcleo activa</div>' : `
+    <div style="background:#fef9c3;border-radius:8px;padding:16px;margin-bottom:16px;text-align:center">
+      <div style="font-size:.82rem;color:#78400a;margin-bottom:12px">Para activar las firmas, completá el pago:</div>
+      <button class="btn-primary" style="max-width:280px;margin:0 auto;display:block" onclick="alert('Integración con Mercado Pago próximamente')">Pagar $${r.monto_total.toLocaleString('es-AR')} ARS con Mercado Pago</button>
+      <div style="font-size:.75rem;color:#9aab97;margin-top:8px">Los links de firma se enviarán automáticamente al confirmar el pago</div>
+    </div>`}
+    ${r.partes && r.partes.length > 0 ? `
+    <div>
+      <div style="font-size:.8rem;font-weight:600;color:#5a6b57;margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">Links de firma</div>
+      <div class="links-list">
+        ${r.partes.map(p=>`
+          <div class="link-item">
+            <div class="link-item-rol">${p.rol} — ${p.nombre||'Sin nombre'} ${p.email?'<span style="color:#9aab97;font-weight:400">· '+p.email+'</span>':''}</div>
+            <div class="link-item-url">${p.link}</div>
+          </div>`).join("")}
+      </div>
+    </div>` : ""}
+    <div class="disclaimer" style="margin-top:20px">
+      Núcleo CERT es un servicio de certificación privada de fecha cierta e identidad de firmantes. No reemplaza la escritura pública en los actos que la ley argentina exige dicha forma (art. 1017 CCCN).
+    </div>
+    <div class="btn-row" style="margin-top:20px">
+      <a href="/" style="flex:1"><button class="btn-secondary" style="width:100%">← Volver al inicio</button></a>
+      <button class="btn-primary" onclick="imprimirResumen()">🖨 Imprimir resumen</button>
+    </div>`;
+}
+
+function imprimirResumen() {
+  const r = state.resultado;
+  const fecha = new Date().toLocaleString('es-AR', {timeZone:'America/Argentina/Buenos_Aires'});
+  const partesList = state.partes.map(p => `
+    <tr>
+      <td>${p.nombre}</td>
+      <td>${p.dni}</td>
+      <td>${p.rol}</td>
+      <td>${p.email}</td>
+    </tr>`).join('');
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Núcleo CERT — ${r.numero_cert}</title>
+<style>
+  body{font-family:Arial,sans-serif;color:#1a2e1a;padding:40px;max-width:800px;margin:0 auto}
+  .header{text-align:center;border-bottom:3px solid #2d9b5a;padding-bottom:20px;margin-bottom:30px}
+  .logo{font-size:1.8rem;font-weight:900;color:#2d9b5a}
+  .logo span{color:#1a2e1a}
+  .cert-num{font-size:1.4rem;font-weight:700;color:#2d9b5a;margin:10px 0}
+  .section{margin-bottom:24px}
+  .section-title{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#5a6b57;border-bottom:1px solid #e5e7eb;padding-bottom:6px;margin-bottom:12px}
+  table{width:100%;border-collapse:collapse;font-size:.9rem}
+  th{background:#f0fdf4;padding:8px;text-align:left;font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:#5a6b57}
+  td{padding:8px;border-bottom:1px solid #f0f0f0}
+  .dato{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:.9rem}
+  .dato-label{color:#5a6b57;font-weight:600}
+  .hash{font-size:.72rem;color:#5a6b57;word-break:break-all;background:#f9f9f9;padding:8px;border-radius:6px;margin-top:4px}
+  .legal{font-size:.75rem;color:#9aab97;line-height:1.6;margin-top:30px;padding-top:20px;border-top:1px solid #e5e7eb;text-align:center}
+  .footer{text-align:center;margin-top:10px;font-size:.8rem;color:#9aab97}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo">Núcleo <span>CERT</span></div>
+  <div class="cert-num">${r.numero_cert}</div>
+  <div style="font-size:.85rem;color:#5a6b57">Certificado de identidad digital y fecha cierta</div>
+</div>
+
+<div class="section">
+  <div class="section-title">Datos del trámite</div>
+  <div class="dato"><span class="dato-label">Fecha y hora</span><span>${fecha}</span></div>
+  <div class="dato"><span class="dato-label">Tipo de trámite</span><span>${state.tipo_tramite}</span></div>
+  <div class="dato"><span class="dato-label">Categoría</span><span>${state.categoria}</span></div>
+  <div class="dato"><span class="dato-label">Modalidad</span><span>${state.modo==='presencial'?'Presencial':'Remoto'}</span></div>
+  <div class="dato"><span class="dato-label">Solicitante</span><span>${state.solicitante_nombre}</span></div>
+  <div class="dato"><span class="dato-label">Tipo solicitante</span><span>${state.tipo_solicitante}</span></div>
+</div>
+
+<div class="section">
+  <div class="section-title">Documento certificado</div>
+  <div class="dato"><span class="dato-label">Archivo</span><span>${state.documento_nombre}</span></div>
+  <div class="dato"><span class="dato-label">Hash SHA-256</span></div>
+  <div class="hash">${state.documento_hash}</div>
+</div>
+
+<div class="section">
+  <div class="section-title">Intervinientes (${state.partes.length})</div>
+  <table>
+    <tr>
+      <th>Nombre</th><th>DNI</th><th>Rol</th><th>Email</th>
+    </tr>
+    ${partesList}
+  </table>
+</div>
+
+<div class="legal">
+  El hash SHA-256 del documento identificado arriba será anclado en la blockchain de Núcleo NKL y Bitcoin como prueba permanente e inalterable de su existencia al momento de la certificación.<br><br>
+  Núcleo CERT es un servicio de certificación privada de fecha cierta e identidad de firmantes.<br>
+  No reemplaza la escritura pública en los actos que la ley argentina exige dicha forma (art. 1017 CCCN).<br><br>
+  nucleocert.com — Núcleo Laboratorios — Moreno, Buenos Aires, Argentina
+</div>
+</body>
+</html>`;
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  win.print();
+}
+function next() { state.step++; render(); window.scrollTo(0,0); }
+function prev() { state.step--; render(); window.scrollTo(0,0); }
+function selectTipo(t) { state.tipo_solicitante = t; render(); }
+function selectTipoSel(v) {
+  if (v === 'Otros') {
+    state.tipo_solicitante = 'Otros';
+    document.getElementById('otrosField').style.display='block';
+  } else {
+    state.tipo_solicitante = v;
+    const f = document.getElementById('otrosField');
+    if(f) f.style.display='none';
+  }
+}
+function selectCat(c) { state.categoria = c; state.tipo_tramite = ""; render(); }
+
+function setLicencia(v) {
+  state.licencia_nkl = v;
+  if (!v) { state.minero_username = ""; state.minero_key = ""; state.minero_validado = false; }
+  render();
+}
+
+function addParte() { state.partes.push({nombre:"",dni:"",rol:"Firmante",email:""}); render(); }
+function removeParte(i) { state.partes.splice(i,1); render(); }
+
+function validarSolicitante() {
+  const nombre = document.getElementById("sol_nombre").value.trim();
+  const doc = document.getElementById("sol_doc").value.trim();
+  const email = document.getElementById("sol_email").value.trim();
+  const tel = document.getElementById("sol_tel").value.trim();
+  if (!state.tipo_solicitante || !nombre || !doc || !email) {
+    document.getElementById("errSol").style.display="block"; return;
+  }
+  state.solicitante_nombre = nombre;
+  state.solicitante_doc = doc;
+  state.solicitante_email = email;
+  state.solicitante_telefono = tel;
+  next();
+}
+
+async function continuarLicencia() {
+  if (!state.licencia_nkl) { next(); return; }
+  const user = document.getElementById("minero_user").value.trim();
+  const key = document.getElementById("minero_key").value.trim();
+  if (!user || !key) {
+    document.getElementById("errMinero").textContent = "Ingresá tu usuario y API key del pool NKL.";
+    document.getElementById("errMinero").style.display="block"; return;
+  }
+  document.getElementById("errMinero").style.display="none";
+  document.getElementById("validandoMinero").style.display="block";
+  try {
+    const res = await fetch(`${API}/validar-minero`, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({username: user, api_key: key})
+    });
+    const data = await res.json();
+    document.getElementById("validandoMinero").style.display="none";
+    if (data.ok || data.valido) {
+      state.minero_username = data.username;
+      state.minero_key = key;
+      state.minero_validado = true;
+      document.getElementById("okMinero").style.display="block";
+      setTimeout(() => next(), 800);
+    } else {
+      document.getElementById("errMinero").textContent = data.mensaje || "Usuario o key incorrectos.";
+      document.getElementById("errMinero").style.display="block";
+    }
+  } catch(e) {
+    document.getElementById("validandoMinero").style.display="none";
+    document.getElementById("errMinero").textContent = "Error de conexión. Intentá de nuevo.";
+    document.getElementById("errMinero").style.display="block";
+  }
+}
+
+function validarCategoria() {
+  const sel = document.getElementById("tipo_tramite");
+  if (sel) state.tipo_tramite = sel.value;
+  if (!state.categoria || !state.tipo_tramite) {
+    document.getElementById("errCat").style.display="block"; return;
+  }
+  next();
+}
+
+function validarPartes() {
+  const ok = state.partes.every(p => p.nombre.trim() && p.dni.trim() && p.email.trim());
+  if (!ok || state.partes.length === 0) {
+    document.getElementById("errPartes").style.display="block"; return;
+  }
+  next();
+}
+
+async function confirmar() {
+  const btn = document.getElementById("btnConfirmar");
+  btn.disabled = true;
+  btn.textContent = "Procesando...";
+  const body = {
+    pais_codigo: state.pais,
+    categoria: state.categoria,
+    tipo_tramite: state.tipo_tramite,
+    solicitante_nombre: state.solicitante_nombre,
+    solicitante_doc: state.solicitante_doc,
+    solicitante_tipo: state.tipo_solicitante,
+    solicitante_email: state.solicitante_email,
+    solicitante_telefono: state.solicitante_telefono,
+    licencia_nkl: state.licencia_nkl ? 1 : 0,
+    minero_username: state.minero_username,
+    modo: state.modo,
+    documento_hash: state.documento_hash,
+    documento_archivo: state.documento_archivo,
+    partes: state.partes
+  };
+  try {
+    const res = await fetch(`${API}/tramites/nuevo`, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (data.ok) {
+      state.resultado = data;
+      state.step = 9;
+      render();
+      window.scrollTo(0,0);
+    } else {
+      document.getElementById("errResumen").textContent = data.error || "Error al procesar.";
+      document.getElementById("errResumen").style.display="block";
+      btn.disabled = false;
+      btn.textContent = state.licencia_nkl ? "Confirmar y certificar →" : "Confirmar y pagar →";
+    }
+  } catch(e) {
+    document.getElementById("errResumen").textContent = "Error de conexión. Intentá de nuevo.";
+    document.getElementById("errResumen").style.display="block";
+    btn.disabled = false;
+    btn.textContent = state.licencia_nkl ? "Confirmar y certificar →" : "Confirmar y pagar →";
+  }
+}
+
+render();
+</script>
+</body>
+</html>
