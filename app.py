@@ -232,7 +232,7 @@ def validar_minero():
             return jsonify({"valido": False, "mensaje": "Usuario o key incorrectos"}), 200
         if minero["banned"]:
             return jsonify({"valido": False, "mensaje": "Usuario suspendido"}), 200
-        return jsonify({"valido": True, "username": minero["username"]}), 200
+        return jsonify({"ok": True, "username": minero["username"]}), 200
     except Exception as e:
         return jsonify({"valido": False, "mensaje": str(e)}), 500
 
@@ -374,7 +374,7 @@ def verificar_publico(numero_cert):
     conn.close()
     if not t:
         return jsonify({"valido": False, "mensaje": "Certificado no encontrado"}), 404
-    return jsonify({"valido": True, **dict(t)})
+    return jsonify({"ok": True, **dict(t)})
 
 @app.route("/api/buscar-por-dni", methods=["POST"])
 def buscar_por_dni():
@@ -454,6 +454,75 @@ def anular_firma(uuid):
         <p>Número de trámite: <strong>{numero_cert}</strong></p>
         <a href="https://nucleocert.com" style="color:#2d9b5a">Volver a Núcleo CERT</a>
     </body></html>"""
+
+@app.route("/api/verificar/<numero_cert>", methods=["GET"])
+def verificar_capa1(numero_cert):
+    """Capa 1 publica - sin autenticacion"""
+    conn = get_db()
+    t = conn.execute("SELECT * FROM tramites WHERE numero_cert=?", (numero_cert,)).fetchone()
+    if not t:
+        conn.close()
+        return jsonify({"ok": False, "error": "Certificado no encontrado"}), 404
+    partes = conn.execute("SELECT COUNT(*) FROM partes WHERE tramite_id=?", (t["id"],)).fetchone()[0]
+    completados = conn.execute("SELECT COUNT(*) FROM partes WHERE tramite_id=? AND completado=1", (t["id"],)).fetchone()[0]
+    conn.close()
+    return jsonify({
+        "ok": True,
+        "numero_cert": t["numero_cert"],
+        "tipo_tramite": t["tipo_tramite"],
+        "categoria": t["categoria"],
+        "fecha_creacion": t["fecha_creacion"],
+        "fecha_certificacion": t["fecha_certificacion"],
+        "estado": t["estado"],
+        "estado_pago": t["estado_pago"],
+        "total_firmantes": partes,
+        "firmantes_completados": completados,
+        "documento_hash": t["hash_documento"] if t["hash_documento"] else "",
+        "pais_codigo": t["pais_codigo"],
+        "tx_nkl": None,
+        "tx_btc": None
+    })
+
+@app.route("/api/verificar/<numero_cert>/privado", methods=["POST"])
+def verificar_capa2(numero_cert):
+    """Capa 2 privada - requiere DNI de cualquier interviniente"""
+    data = request.json
+    dni = str(data.get("dni", "")).strip().replace(".", "").replace(" ", "")
+    conn = get_db()
+    t = conn.execute("SELECT * FROM tramites WHERE numero_cert=?", (numero_cert,)).fetchone()
+    if not t:
+        conn.close()
+        return jsonify({"ok": False, "error": "Certificado no encontrado"}), 404
+    # Verificar si el DNI corresponde al solicitante o a alguna parte
+    dni_solicitante = str(t["solicitante_doc"]).strip().replace(".", "").replace(" ", "")
+    partes = conn.execute("SELECT * FROM partes WHERE tramite_id=?", (t["id"],)).fetchall()
+    autorizado = (dni == dni_solicitante)
+    if not autorizado:
+        for p in partes:
+            dni_parte = str(p["dni_numero"]).strip().replace(".", "").replace(" ", "")
+            if dni == dni_parte:
+                autorizado = True
+                break
+    if not autorizado:
+        conn.close()
+        return jsonify({"ok": False, "error": "DNI no encontrado en este trámite"}), 403
+    conn.close()
+    return jsonify({
+        "ok": True,
+        "numero_cert": t["numero_cert"],
+        "tipo_tramite": t["tipo_tramite"],
+        "categoria": t["categoria"],
+        "fecha_creacion": t["fecha_creacion"],
+        "fecha_certificacion": t["fecha_certificacion"],
+        "estado": t["estado"],
+        "solicitante_nombre": t["solicitante_nombre"],
+        "solicitante_tipo": t["solicitante_tipo"],
+        "documento_hash": t["hash_documento"] if t["hash_documento"] else "",
+        "tx_nkl": None,
+        "tx_btc": None,
+        "partes": [{"nombre": p["nombre_completo"], "dni": p["dni_numero"], "rol": p["rol"],
+                    "completado": bool(p["completado"]), "firma_timestamp": p["firma_timestamp"]} for p in partes]
+    })
 
 if __name__ == "__main__":
     init_db()
