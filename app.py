@@ -11,6 +11,9 @@ CORS(app, origins=["https://nucleocert.com", "http://nucleocert.com", "https://w
 DB = "/root/cert/cert.db"
 NKL_DB = "/root/nkl/nkl_pool.db"
 
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
+TWILIO_VERIFY_SID = os.getenv("TWILIO_VERIFY_SID", "")
 GMAIL_USER = "nucleonkl@gmail.com"
 GMAIL_PASS = "ozdctslztmukedcw"
 
@@ -501,8 +504,29 @@ def validar_dni_firma(uuid):
 
 @app.route("/api/firmar/<uuid>/enviar-sms", methods=["POST"])
 def enviar_sms(uuid):
-    # Por ahora simulado — integrar Twilio o similar después
-    return jsonify({"ok": True, "mensaje": "SMS enviado"})
+    data = request.json
+    telefono = data.get("telefono", "").strip()
+    if not telefono:
+        return jsonify({"ok": False, "error": "Teléfono requerido"}), 400
+    # Formatear número argentino
+    if not telefono.startswith("+"):
+        telefono = telefono.replace(" ", "").replace("-", "")
+        if telefono.startswith("0"):
+            telefono = telefono[1:]
+        if not telefono.startswith("54"):
+            telefono = "54" + telefono
+        telefono = "+" + telefono
+    try:
+        from twilio.rest import Client
+        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        verification = client.verify.v2.services(TWILIO_VERIFY_SID).verifications.create(
+            to=telefono,
+            channel="sms"
+        )
+        return jsonify({"ok": True, "mensaje": "SMS enviado", "status": verification.status})
+    except Exception as e:
+        print(f"Error Twilio enviar: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 @app.route("/api/firmar/<uuid>/completar", methods=["POST"])
 def completar_firma(uuid):
@@ -533,6 +557,31 @@ def completar_firma(uuid):
             raw = _b64.b64decode(val.split(",")[1])
             with open(f"{carpeta}/{campo}.{ext}", "wb") as f:
                 f.write(raw)
+    # Verificar código SMS con Twilio
+    telefono = data.get("telefono", "").strip()
+    sms_codigo = data.get("sms_codigo", "").strip()
+    if telefono and sms_codigo and TWILIO_ACCOUNT_SID:
+        if not telefono.startswith("+"):
+            telefono = telefono.replace(" ", "").replace("-", "")
+            if telefono.startswith("0"):
+                telefono = telefono[1:]
+            if not telefono.startswith("54"):
+                telefono = "54" + telefono
+            telefono = "+" + telefono
+        try:
+            from twilio.rest import Client
+            client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+            check = client.verify.v2.services(TWILIO_VERIFY_SID).verification_checks.create(
+                to=telefono,
+                code=sms_codigo
+            )
+            if check.status != "approved":
+                conn.close()
+                return jsonify({"ok": False, "error": "Código SMS incorrecto. Verificá e intentá de nuevo."}), 400
+        except Exception as e:
+            print(f"Error Twilio verificar: {e}")
+            conn.close()
+            return jsonify({"ok": False, "error": "Error al verificar el código SMS."}), 500
     conn.execute("""UPDATE partes SET completado=1, nombre_completo=?, dni_numero=?,
         firma_timestamp=?, sms_verificado=1 WHERE link_uuid=?""",
         (data.get("nombre_completo",""), data.get("dni_numero",""),
