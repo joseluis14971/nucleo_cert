@@ -210,7 +210,7 @@
 <!-- TOPBAR -->
 <nav class="topbar">
   <a class="topbar-logo" href="#">Núcleo <span>CERT</span></a>
-  <span class="topbar-badge">🚀 Lanzamiento — Argentina</span>
+  
   <a href="/verificar" style="display:inline-block;background:#e65c00;color:#fff;font-weight:700;font-size:.85rem;padding:8px 18px;border-radius:var(--radius);text-decoration:none;margin-right:12px;letter-spacing:.02em;">VERIFICAR</a><a class="btn-primary topbar-cta" href="/certificar" style="display:inline-block;text-decoration:none">Certificar ahora</a>
 </nav>
 
@@ -274,7 +274,6 @@
         <span class="capa-label">Capa 01</span>
         <div class="capa-title">Identidad del firmante</div>
         <ul class="capa-list">
-          <li>Escaneo PDF417 DNI</li>
           <li>Foto frente y dorso del DNI</li>
           <li>Selfie con DNI en mano</li>
           <li>SMS al titular</li>
@@ -287,7 +286,6 @@
         <ul class="capa-list">
           <li>Video 5 segundos</li>
           <li>Parpadeo + giro de cabeza</li>
-          <li>Huella WebAuthn</li>
           <li>Siempre nueva por acto</li>
         </ul>
       </div>
@@ -400,7 +398,7 @@
         <div class="paso-num">3</div>
         <div class="paso-body">
           <h3>Verificación de identidad completa</h3>
-          <p>Escaneo PDF417 del DNI, foto frente y dorso, selfie con DNI, video prueba de vida, huella WebAuthn, SMS. Todo desde el navegador del celular.</p>
+          <p>Foto frente y dorso del DNI, selfie con DNI, video prueba de vida y verificación SMS. Todo desde el navegador del celular. Todo desde el navegador del celular.</p>
         </div>
       </div>
 
@@ -416,7 +414,7 @@
         <div class="paso-num">5</div>
         <div class="paso-body">
           <h3>Anclaje en dos blockchains</h3>
-          <p>Cuando el solicitante confirma todas las identidades, el SHA-256 del documento se ancla en NKL blockchain y en Bitcoin OP_RETURN. Timestamp criptográfico inalterable.</p>
+          <p>Cuando el solicitante confirma todas las identidades, el SHA-256 del documento se ancla en NKL blockchain y en Bitcoin OP_RETURN. Timestamp criptográfico inalterable.*</p>
         </div>
       </div>
 
@@ -446,8 +444,8 @@
 <section class="diferencial" id="diferencial">
   <div class="container">
     <p class="section-eyebrow">Por qué elegirnos</p>
-    <h2 class="section-title">Lo que ningún competidor ofrece</h2>
-    <p class="section-sub">DocuSign y SignNow hacen firma electrónica simple. Esto es otra cosa.</p>
+    <h2 class="section-title">Lo que las plataformas tradicionales no ofrecen</h2>
+    <p class="section-sub">Las plataformas de firma electrónica simple no anclan identidad ni integridad en blockchain. Esto es otra cosa.</p>
 
     <div class="dif-grid">
 
@@ -532,8 +530,8 @@
         <div class="precio-badge">Con licencia NKL activa</div>
         <div class="precio-label">Mineros NKL</div>
         <div class="precio-amount">Gratis</div>
-        <div class="precio-desc">Para usuarios con 15 días de minería activa por mes. Incluye todos los archivos de biometría.</div>
-        <a class="btn-primary precio-cta" href="#">Activar licencia NKL</a>
+        <div class="precio-desc">Para usuarios con 15 días de minería activa por mes en <a href="https://nucleonkl.com" target="_blank" style="color:#2d9b5a">nucleonkl.com</a>. Incluye todos los archivos de biometría.</div>
+        <a class="btn-primary precio-cta" href="https://nucleonkl.com" target="_blank">Activar licencia NKL</a>
       </div>
 
       <div class="precio-card">
@@ -547,6 +545,9 @@
   </div>
 </section>
 
+<div style="background:var(--green-50);padding:20px 40px;font-size:.78rem;color:var(--gray-500);line-height:1.7;max-width:1100px;margin:0 auto;">
+  * <strong>Timestamp criptográfico:</strong> registro de fecha y hora generado matemáticamente e incorporado a la blockchain, que garantiza que el documento existía en ese momento exacto y no fue modificado posteriormente. Es verificable por cualquier persona sin depender de una autoridad central.
+</div>
 <!-- DISCLAIMER -->
 <div class="disclaimer">
   <p>Núcleo CERT es un servicio de certificación privada de fecha cierta e identidad de firmantes. No reemplaza la escritura pública en los actos que la ley argentina exige dicha forma (art. 1017 CCCN). Para consultas sobre validez legal, consulte a un profesional habilitado.</p>
