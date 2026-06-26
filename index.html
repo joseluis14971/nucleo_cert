@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Núcleo CERT — Certificación privada. Prueba permanente.</title>
+<meta name="description" content="Núcleo CERT ancla la identidad de los firmantes y la integridad de cada documento en dos blockchains independientes. Sin depender de nadie.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green-50:  #f0f7f2;
+    --green-100: #d9ede0;
+    --green-500: #2d9b5a;
+    --green-600: #1e7a43;
+    --green-700: #155e33;
+    --black:     #111410;
+    --gray-700:  #374334;
+    --gray-500:  #5a6b57;
+    --gray-300:  #c4cec1;
+    --gray-100:  #edf2eb;
+    --white:     #ffffff;
+    --gold:      #c9a84c;
+    --font-display: 'Sora', sans-serif;
+    --font-body:    'Inter', sans-serif;
+    --radius: 10px;
+    --shadow: 0 2px 12px rgba(0,0,0,.07);
+  }
+
+  html { scroll-behavior: smooth; }
+  body { font-family: var(--font-body); color: var(--black); background: var(--white); line-height: 1.6; }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 40px; background: var(--white);
+    border-bottom: 1px solid var(--gray-100); position: sticky; top: 0; z-index: 100;
+  }
+  .topbar-logo { font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; color: var(--black); text-decoration: none; }
+  .topbar-logo span { color: var(--green-500); }
+  .topbar-badge {
+    font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+    background: var(--green-50); color: var(--green-600); border: 1px solid var(--green-100);
+    padding: 4px 12px; border-radius: 99px;
+  }
+  .topbar-cta {
+    background: var(--green-500); color: var(--white); font-weight: 600; font-size: .88rem;
+    padding: 9px 22px; border-radius: var(--radius); text-decoration: none; border: none; cursor: pointer;
+    transition: background .15s;
+  }
+  .topbar-cta:hover { background: var(--green-600); }
+
+  /* ── HERO ── */
+  .hero { background: var(--white); padding: 80px 40px 70px; max-width: 780px; margin: 0 auto; }
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: .75rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--green-600); margin-bottom: 28px;
+  }
+  .hero-eyebrow::before { content:''; display:block; width:28px; height:2px; background: var(--green-500); }
+  .hero h1 { font-family: var(--font-display); font-size: clamp(2.2rem, 5vw, 3.4rem); font-weight: 800; line-height: 1.1; color: var(--black); }
+  .hero h1 em { font-style: normal; color: var(--green-500); }
+  .hero-sub { font-size: 1.05rem; color: var(--gray-500); margin-top: 20px; max-width: 560px; }
+  .hero-actions { display: flex; gap: 14px; margin-top: 36px; flex-wrap: wrap; }
+  .btn-primary {
+    background: var(--green-500); color: var(--white); font-weight: 600; font-size: .95rem;
+    padding: 13px 28px; border-radius: var(--radius); text-decoration: none; border: none; cursor: pointer;
+    transition: background .15s;
+  }
+  .btn-primary:hover { background: var(--green-600); }
+  .btn-secondary {
+    background: transparent; color: var(--green-600); font-weight: 600; font-size: .95rem;
+    padding: 13px 28px; border-radius: var(--radius); text-decoration: none; border: 2px solid var(--green-200, #a8d5b8); cursor: pointer;
+    transition: border-color .15s, color .15s;
+  }
+  .btn-secondary:hover { border-color: var(--green-500); }
+
+  /* ── DIVIDER ── */
+  .divider { height: 1px; background: var(--gray-100); margin: 0 40px; }
+
+  /* ── SECTION BASE ── */
+  section { padding: 72px 40px; }
+  .section-eyebrow {
+    font-size: .72rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--green-600); margin-bottom: 10px;
+  }
+  .section-title { font-family: var(--font-display); font-size: clamp(1.4rem, 3vw, 1.9rem); font-weight: 700; color: var(--black); }
+  .section-sub { color: var(--gray-500); margin-top: 8px; font-size: .97rem; }
+  .container { max-width: 1100px; margin: 0 auto; }
+
+  /* ── COBERTURA ── */
+  .cobertura { background: var(--green-50); }
+  .country-selector {
+    margin-top: 28px; max-width: 400px;
+    border: 1.5px solid var(--green-100); border-radius: var(--radius); overflow: hidden; background: var(--white);
+    display: flex; align-items: center; padding: 0 16px; gap: 10px; height: 48px;
+    box-shadow: var(--shadow);
+  }
+  .country-selector select {
+    border: none; outline: none; font-family: var(--font-body); font-size: .95rem; color: var(--black);
+    background: transparent; flex: 1; cursor: pointer; appearance: none;
+  }
+  .country-selector .flag { font-size: 1.2rem; }
+  .country-note { font-size: .83rem; color: var(--gray-500); margin-top: 12px; }
+
+  /* ── CAPAS ── */
+  .capas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-top: 40px; }
+  .capa-card {
+    background: var(--white); border: 1.5px solid var(--gray-100); border-radius: var(--radius);
+    padding: 28px 24px; box-shadow: var(--shadow);
+  }
+  .capa-label {
+    font-size: .68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--green-600); background: var(--green-50); border-radius: 4px;
+    padding: 3px 8px; display: inline-block; margin-bottom: 12px;
+  }
+  .capa-title { font-family: var(--font-display); font-weight: 700; font-size: 1rem; margin-bottom: 14px; color: var(--black); }
+  .capa-list { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+  .capa-list li { font-size: .87rem; color: var(--gray-700); display: flex; align-items: flex-start; gap: 8px; }
+  .capa-list li::before { content: '✓'; color: var(--green-500); font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+
+  /* ── TRÁMITES ── */
+  .tramites { background: var(--green-50); }
+  .tramites-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 36px; }
+  .tramite-card {
+    background: var(--white); border-radius: var(--radius); padding: 22px 20px;
+    border: 1.5px solid var(--gray-100); box-shadow: var(--shadow);
+  }
+  .tramite-icon { font-size: 1.4rem; margin-bottom: 10px; }
+  .tramite-cat { font-family: var(--font-display); font-weight: 700; font-size: .93rem; margin-bottom: 10px; color: var(--black); }
+  .tramite-items { font-size: .82rem; color: var(--gray-500); line-height: 1.7; }
+
+  /* ── PROCESO ── */
+  .proceso-steps { display: flex; flex-direction: column; gap: 0; margin-top: 40px; max-width: 700px; }
+  .paso {
+    display: flex; gap: 24px; padding-bottom: 36px; position: relative;
+  }
+  .paso:not(:last-child)::after {
+    content: ''; position: absolute; left: 20px; top: 44px; bottom: 0;
+    width: 2px; background: var(--green-100);
+  }
+  .paso-num {
+    width: 40px; height: 40px; border-radius: 50%; background: var(--green-500); color: var(--white);
+    font-family: var(--font-display); font-weight: 700; font-size: .9rem;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; z-index: 1;
+  }
+  .paso-body h3 { font-family: var(--font-display); font-weight: 700; font-size: 1rem; margin-bottom: 5px; }
+  .paso-body p { font-size: .88rem; color: var(--gray-500); }
+
+  /* ── DIFERENCIAL ── */
+  .diferencial { background: var(--white); }
+  .dif-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 36px; }
+  .dif-card {
+    background: var(--green-50); border-radius: var(--radius); padding: 26px 22px;
+    border: 1.5px solid var(--green-100);
+  }
+  .dif-icon { font-size: 1.4rem; margin-bottom: 12px; }
+  .dif-title { font-family: var(--font-display); font-weight: 700; font-size: .93rem; margin-bottom: 8px; }
+  .dif-desc { font-size: .83rem; color: var(--gray-500); line-height: 1.6; }
+
+  /* ── PRECIOS ── */
+  .precios { background: var(--green-50); }
+  .precios-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; margin-top: 36px; }
+  .precio-card {
+    background: var(--white); border-radius: var(--radius); padding: 36px 32px;
+    border: 1.5px solid var(--gray-100); box-shadow: var(--shadow); text-align: center;
+  }
+  .precio-card.destacado { border-color: var(--green-500); position: relative; }
+  .precio-badge {
+    position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+    background: var(--green-500); color: var(--white);
+    font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    padding: 4px 14px; border-radius: 99px; white-space: nowrap;
+  }
+  .precio-label { font-size: .8rem; color: var(--gray-500); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .precio-amount { font-family: var(--font-display); font-size: 2.4rem; font-weight: 800; color: var(--black); line-height: 1; }
+  .precio-amount .currency { font-size: 1.2rem; vertical-align: top; margin-top: 6px; display: inline-block; }
+  .precio-desc { font-size: .85rem; color: var(--gray-500); margin-top: 10px; line-height: 1.5; }
+  .precio-cta { display: block; margin-top: 24px; }
+
+  /* ── DISCLAIMER ── */
+  .disclaimer { background: var(--gray-100); padding: 32px 40px; }
+  .disclaimer p { font-size: .8rem; color: var(--gray-500); max-width: 900px; margin: 0 auto; text-align: center; line-height: 1.6; }
+
+  /* ── FOOTER ── */
+  footer {
+    background: var(--black); color: var(--gray-300); padding: 40px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: gap;
+    gap: 16px;
+  }
+  .footer-logo { font-family: var(--font-display); font-weight: 700; color: var(--white); font-size: 1rem; }
+  .footer-logo span { color: var(--green-500); }
+  footer p { font-size: .8rem; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 680px) {
+    .topbar { padding: 12px 20px; }
+    .hero, section { padding: 52px 20px; }
+    .divider { margin: 0 20px; }
+    .disclaimer { padding: 24px 20px; }
+    footer { padding: 32px 20px; flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<nav class="topbar">
+  <a class="topbar-logo" href="#">Núcleo <span>CERT</span></a>
+  <span class="topbar-badge">🚀 Lanzamiento — Argentina</span>
+  <a href="/verificar" style="display:inline-block;background:#e65c00;color:#fff;font-weight:700;font-size:.85rem;padding:8px 18px;border-radius:var(--radius);text-decoration:none;margin-right:12px;letter-spacing:.02em;">VERIFICAR</a><a class="btn-primary topbar-cta" href="/certificar" style="display:inline-block;text-decoration:none">Certificar ahora</a>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-eyebrow">Certificación privada</div>
+  <h1>Certificación privada.<br><em>Prueba permanente.</em></h1>
+  <p class="hero-sub">Núcleo CERT ancla la identidad de los firmantes y la integridad de cada documento en dos blockchains independientes. Sin depender de nadie.</p>
+  <div class="hero-actions">
+    <a class="btn-primary" href="/certificar">Certificar un documento</a>
+    <a class="btn-secondary" href="#proceso">Ver cómo funciona</a>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- COBERTURA -->
+<section class="cobertura" id="cobertura">
+  <div class="container">
+    <p class="section-eyebrow">Cobertura</p>
+    <h2 class="section-title">Seleccioná tu país</h2>
+    <p class="section-sub">Argentina activo. El resto en preparación — dejá tu email y te avisamos.</p>
+    <div class="country-selector">
+      <span class="flag">🇦🇷</span>
+      <select>
+        <option value="AR">Argentina — Activo</option>
+        <option disabled>🇲🇽 México — Próximamente</option>
+        <option disabled>🇨🇴 Colombia — Próximamente</option>
+        <option disabled>🇨🇱 Chile — Próximamente</option>
+        <option disabled>🇵🇪 Perú — Próximamente</option>
+        <option disabled>🇺🇾 Uruguay — Próximamente</option>
+        <option disabled>🇪🇨 Ecuador — Próximamente</option>
+        <option disabled>🇻🇪 Venezuela — Próximamente</option>
+        <option disabled>🇧🇴 Bolivia — Próximamente</option>
+        <option disabled>🇵🇾 Paraguay — Próximamente</option>
+        <option disabled>🇨🇷 Costa Rica — Próximamente</option>
+        <option disabled>🇵🇦 Panamá — Próximamente</option>
+        <option disabled>🇬🇹 Guatemala — Próximamente</option>
+        <option disabled>🇩🇴 R. Dominicana — Próximamente</option>
+        <option disabled>🇸🇻 El Salvador — Próximamente</option>
+        <option disabled>🇭🇳 Honduras — Próximamente</option>
+        <option disabled>🇳🇮 Nicaragua — Próximamente</option>
+      </select>
+    </div>
+    <p class="country-note">¿Tu país no está activo aún? <a href="#" style="color:var(--green-600);text-decoration:underline;">Dejá tu email y te notificamos.</a></p>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- IDENTIDAD Y PRUEBA -->
+<section id="capas">
+  <div class="container">
+    <p class="section-eyebrow">Identidad y Prueba</p>
+    <h2 class="section-title">Cuatro capas de verificación</h2>
+    <p class="section-sub">Cada acto de firma activa todas las capas. Sin atajos.</p>
+
+    <div class="capas-grid">
+
+      <div class="capa-card">
+        <span class="capa-label">Capa 01</span>
+        <div class="capa-title">Identidad del firmante</div>
+        <ul class="capa-list">
+          <li>Escaneo PDF417 DNI</li>
+          <li>Foto frente y dorso del DNI</li>
+          <li>Selfie con DNI en mano</li>
+          <li>SMS al titular</li>
+        </ul>
+      </div>
+
+      <div class="capa-card">
+        <span class="capa-label">Capa 02</span>
+        <div class="capa-title">Prueba de vida</div>
+        <ul class="capa-list">
+          <li>Video 5 segundos</li>
+          <li>Parpadeo + giro de cabeza</li>
+          <li>Huella WebAuthn</li>
+          <li>Siempre nueva por acto</li>
+        </ul>
+      </div>
+
+      <div class="capa-card">
+        <span class="capa-label">Capa 03</span>
+        <div class="capa-title">Integridad del documento</div>
+        <ul class="capa-list">
+          <li>SHA-256 del PDF</li>
+          <li>Anclaje en NKL blockchain</li>
+          <li>Anclaje en Bitcoin OP_RETURN</li>
+          <li>Timestamp criptográfico</li>
+        </ul>
+      </div>
+
+      <div class="capa-card">
+        <span class="capa-label">Capa 04</span>
+        <div class="capa-title">Verificación pública</div>
+        <ul class="capa-list">
+          <li>QR en el documento</li>
+          <li>Búsqueda año + número</li>
+          <li>Verificación de integridad</li>
+          <li>Sin cuenta, sin login</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- TRÁMITES -->
+<section class="tramites" id="tramites">
+  <div class="container">
+    <p class="section-eyebrow">Trámites</p>
+    <h2 class="section-title">Qué podés certificar</h2>
+    <p class="section-sub">Desde boletos de compraventa hasta actas de asamblea con 20 firmantes.</p>
+
+    <div class="tramites-grid">
+
+      <div class="tramite-card">
+        <div class="tramite-icon">🏠</div>
+        <div class="tramite-cat">Inmobiliario</div>
+        <div class="tramite-items">Boleto compraventa · Locación · Cesión de derechos · Poder irrevocable · Seña / reserva · Rescisión · Permuta · Hipoteca</div>
+      </div>
+
+      <div class="tramite-card">
+        <div class="tramite-icon">🚗</div>
+        <div class="tramite-cat">Automotor</div>
+        <div class="tramite-items">Compraventa · Cesión dominio · Poder transferencia · Prenda · Baja de dominio</div>
+      </div>
+
+      <div class="tramite-card">
+        <div class="tramite-icon">⚓</div>
+        <div class="tramite-cat">Embarcaciones</div>
+        <div class="tramite-items">Compraventa náutica · Cesión · Poder transferencia náutica · Prenda naval</div>
+      </div>
+
+      <div class="tramite-card">
+        <div class="tramite-icon">🏢</div>
+        <div class="tramite-cat">Societario</div>
+        <div class="tramite-items">Acta asamblea ordinaria · Acta extraordinaria · Acta de directorio · Designación · Reforma · Disolución / fusión</div>
+      </div>
+
+      <div class="tramite-card">
+        <div class="tramite-icon">📋</div>
+        <div class="tramite-cat">Contratos</div>
+        <div class="tramite-items">Servicios · Confidencialidad · Obra · Carta de intención · Reconocimiento de deuda · Acuerdo extrajudicial</div>
+      </div>
+
+      <div class="tramite-card">
+        <div class="tramite-icon">👤</div>
+        <div class="tramite-cat">Personal</div>
+        <div class="tramite-items">Declaración jurada · Consentimiento médico · Autorización bancaria</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- PROCESO -->
+<section id="proceso">
+  <div class="container">
+    <p class="section-eyebrow">Proceso</p>
+    <h2 class="section-title">Cómo funciona</h2>
+    <p class="section-sub">Presencial o remoto. Cada parte recibe su link individual.</p>
+
+    <div class="proceso-steps">
+
+      <div class="paso">
+        <div class="paso-num">1</div>
+        <div class="paso-body">
+          <h3>El solicitante inicia el trámite</h3>
+          <p>Elige categoría y tipo de trámite, sube el PDF y declara cuántas partes intervienen y con qué rol (comprador, vendedor, poderdante, testigo, etc.).</p>
+        </div>
+      </div>
+
+      <div class="paso">
+        <div class="paso-num">2</div>
+        <div class="paso-body">
+          <h3>Cada parte recibe su link único</h3>
+          <p>Modo presencial: se pasa el dispositivo en el momento. Modo remoto: cada parte abre su link desde su propio celular, desde cualquier lugar del país. Siempre individual y ya.</p>
+        </div>
+      </div>
+
+      <div class="paso">
+        <div class="paso-num">3</div>
+        <div class="paso-body">
+          <h3>Verificación de identidad completa</h3>
+          <p>Escaneo PDF417 del DNI, foto frente y dorso, selfie con DNI, video prueba de vida, huella WebAuthn, SMS. Todo desde el navegador del celular.</p>
+        </div>
+      </div>
+
+      <div class="paso">
+        <div class="paso-num">4</div>
+        <div class="paso-body">
+          <h3>El solicitante aprueba la identidad</h3>
+          <p>El solicitante <strong>(&quot;Escribano, abogado, contador, corredor público, gestor o profesional habilitado&quot;)</strong> recibe por email las fotos del DNI y selfie de cada firmante. Si los datos no coinciden, anula esa firma con un clic y el firmante recibe notificación para repetir el proceso.</p>
+        </div>
+      </div>
+
+      <div class="paso">
+        <div class="paso-num">5</div>
+        <div class="paso-body">
+          <h3>Anclaje en dos blockchains</h3>
+          <p>Cuando el solicitante confirma todas las identidades, el SHA-256 del documento se ancla en NKL blockchain y en Bitcoin OP_RETURN. Timestamp criptográfico inalterable.</p>
+        </div>
+      </div>
+
+      <div class="paso">
+        <div class="paso-num">6</div>
+        <div class="paso-body">
+          <h3>Certificado y notificación fehaciente</h3>
+          <p>Se genera CERT-2026-XXXXXX. El PDF con QR y sello se envía a la dirección electrónica de cada parte con acuse de recibo anclado en blockchain.</p>
+        </div>
+      </div>
+
+      <div class="paso">
+        <div class="paso-num">7</div>
+        <div class="paso-body">
+          <h3>Verificación pública permanente</h3>
+          <p>Cualquier persona escanea el QR o ingresa año + número en nucleocert.com. Sin cuenta. Sin login. También pueden subir el PDF para verificar que no fue alterado.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- DIFERENCIAL -->
+<section class="diferencial" id="diferencial">
+  <div class="container">
+    <p class="section-eyebrow">Por qué elegirnos</p>
+    <h2 class="section-title">Lo que ningún competidor ofrece</h2>
+    <p class="section-sub">DocuSign y SignNow hacen firma electrónica simple. Esto es otra cosa.</p>
+
+    <div class="dif-grid">
+
+      <div class="dif-card">
+        <div class="dif-icon">⛓️</div>
+        <div class="dif-title">Anclaje dual NKL + Bitcoin</div>
+        <div class="dif-desc">Dos blockchains independientes. Si uno desaparece, el otro preserva la prueba.</div>
+      </div>
+
+      <div class="dif-card">
+        <div class="dif-icon">🎥</div>
+        <div class="dif-title">Prueba de vida en cada acto</div>
+        <div class="dif-desc">Video de 5 segundos que no se reutiliza. Nadie firma con identidad de otro.</div>
+      </div>
+
+      <div class="dif-card">
+        <div class="dif-icon">🛡️</div>
+        <div class="dif-title">Verificación de integridad</div>
+        <div class="dif-desc">Subís el PDF y el sistema dice si fue alterado después de la firma. Prueba pericial directa.</div>
+      </div>
+
+      <div class="dif-card">
+        <div class="dif-icon">📨</div>
+        <div class="dif-title">Notificación fehaciente</div>
+        <div class="dif-desc">Cada parte recibe el certificado en su dirección electrónica con acuse de recibo anclado en blockchain.</div>
+      </div>
+
+      <div class="dif-card">
+        <div class="dif-icon">👥</div>
+        <div class="dif-title">Hasta 20+ firmantes</div>
+        <div class="dif-desc">Asambleas societarias, actas de directorio. Siempre link individual y ya.</div>
+      </div>
+
+      <div class="dif-card">
+        <div class="dif-icon">🔍</div>
+        <div class="dif-title">Verificación sin cuenta</div>
+        <div class="dif-desc">Cualquier persona verifica en <a href="/verificar" style="color:var(--green-500)">nucleocert.com/verificar</a> con el número de certificado. Sin registrarse. Sin descargar nada.</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- VERIFICAR -->
+<section style="background: var(--white); padding: 72px 40px;">
+  <div class="container" style="text-align:center;">
+    <p class="section-eyebrow">Transparencia total</p>
+    <h2 class="section-title">VERIFICAR CERTIFICACIONES</h2>
+    <p class="section-sub" style="max-width:600px;margin:12px auto 0;">Cualquier persona puede verificar la autenticidad de un certificado Núcleo CERT. Sin registrarse. Sin descargar nada. Solo el número de certificado.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:700px;margin:40px auto;">
+      <div style="background:var(--green-50);border:1.5px solid var(--green-100);border-radius:var(--radius);padding:24px;text-align:left;">
+        <div style="font-size:1.4rem;margin-bottom:10px;">🔓</div>
+        <div style="font-weight:700;font-size:.95rem;margin-bottom:6px;color:var(--black);">Capa 1 — Pública</div>
+        <div style="font-size:.83rem;color:var(--gray-500);line-height:1.6;">Tipo de trámite, fecha, estado, cantidad de firmantes, hash SHA-256 del documento y estado del anclaje blockchain. Sin autenticación.</div>
+      </div>
+      <div style="background:var(--green-50);border:1.5px solid var(--green-100);border-radius:var(--radius);padding:24px;text-align:left;">
+        <div style="font-size:1.4rem;margin-bottom:10px;">🔒</div>
+        <div style="font-weight:700;font-size:.95rem;margin-bottom:6px;color:var(--black);">Capa 2 — Privada</div>
+        <div style="font-size:.83rem;color:var(--gray-500);line-height:1.6;">Nombres, roles, DNIs y fechas de firma de todos los intervinientes. Requiere el DNI de cualquiera de los participantes del trámite.</div>
+      </div>
+    </div>
+
+    <a href="/verificar" style="display:inline-block;margin-top:8px;background:#e65c00;color:#fff;font-weight:700;font-size:1rem;padding:15px 40px;border-radius:var(--radius);text-decoration:none;letter-spacing:.03em;">VERIFICAR CERTIFICACIONES →</a>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- PRECIOS -->
+<section class="precios" id="precios">
+  <div class="container">
+    <p class="section-eyebrow">Precios</p>
+    <h2 class="section-title">Simple y transparente</h2>
+    <p class="section-sub">Los que firman NKL, no pagan. Los que no, pagan por firmante.</p>
+
+    <div class="precios-grid">
+
+      <div class="precio-card destacado">
+        <div class="precio-badge">Con licencia NKL activa</div>
+        <div class="precio-label">Mineros NKL</div>
+        <div class="precio-amount">Gratis</div>
+        <div class="precio-desc">Para usuarios con 15 días de minería activa por mes. Incluye todos los archivos de biometría.</div>
+        <a class="btn-primary precio-cta" href="#">Activar licencia NKL</a>
+      </div>
+
+      <div class="precio-card">
+        <div class="precio-label">Sin NKL</div>
+        <div class="precio-amount"><span class="currency">$</span>10.000</div>
+        <div class="precio-desc">Por firmante interviniente. ARS. Pago vía Mercado Pago. Sin suscripción mensual.</div>
+        <a class="btn-primary precio-cta" href="/certificar">Certificar ahora</a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- DISCLAIMER -->
+<div class="disclaimer">
+  <p>Núcleo CERT es un servicio de certificación privada de fecha cierta e identidad de firmantes. No reemplaza la escritura pública en los actos que la ley argentina exige dicha forma (art. 1017 CCCN). Para consultas sobre validez legal, consulte a un profesional habilitado.</p>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">Núcleo <span>CERT</span> · by Núcleo Laboratorios</div>
+  <p>nucleocert.com</p>
+</footer>
+
+</body>
+</html>
