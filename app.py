@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from datetime import datetime
-import sqlite3, os, uuid, smtplib
+import sqlite3, os, uuid, smtplib, threading
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -86,6 +86,10 @@ def init_db():
     """)
     conn.commit()
     conn.close()
+
+def _enviar_en_thread(func, *args, **kwargs):
+    t = threading.Thread(target=func, args=args, kwargs=kwargs, daemon=True)
+    t.start()
 
 def enviar_email(destinatario, nombre, link, numero_cert, tipo_tramite, solicitante):
     try:
@@ -306,17 +310,17 @@ def nuevo_tramite():
     if licencia_nkl:
         for p in links:
             if p.get("email"):
-                ok = enviar_email(
+                _enviar_en_thread(enviar_email,
                     p["email"], p["nombre"], p["link"],
                     numero_cert, data["tipo_tramite"], data["solicitante_nombre"]
                 )
-                emails_enviados.append({"email": p["email"], "enviado": ok})
+                emails_enviados.append({"email": p["email"], "enviado": True})
 
     # Email al solicitante
     if licencia_nkl and data.get("solicitante_email"):
         fecha_str = datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC")
         partes_data = [{"nombre": p["nombre"], "dni_numero": p.get("dni",""), "rol": p["rol"], "email": p.get("email","")} for p in data["partes"]]
-        enviar_email_solicitante(
+        _enviar_en_thread(enviar_email_solicitante,
             data["solicitante_email"],
             data["solicitante_nombre"],
             numero_cert,
@@ -356,11 +360,11 @@ def enviar_emails_tramite(numero_cert):
     for p in partes:
         link = f"https://nucleocert.com/firmar/{p['link_uuid']}"
         if p["email"]:
-            ok = enviar_email(
+            _enviar_en_thread(enviar_email,
                 p["email"], p["nombre_completo"], link,
                 numero_cert, dict(t)["tipo_tramite"], dict(t)["solicitante_nombre"]
             )
-            resultados.append({"nombre": p["nombre_completo"], "email": p["email"], "enviado": ok})
+            resultados.append({"nombre": p["nombre_completo"], "email": p["email"], "enviado": True})
 
     return jsonify({"ok": True, "resultados": resultados})
 
