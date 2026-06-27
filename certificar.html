@@ -489,6 +489,7 @@ function renderExito() {
       <div style="font-size:.82rem;color:#78400a;margin-bottom:12px">Para activar las firmas, completá el pago:</div>
       <button class="btn-primary" style="max-width:280px;margin:0 auto;display:block" onclick="alert('Integración con Mercado Pago próximamente')">Pagar $${r.monto_total.toLocaleString('es-AR')} ARS con Mercado Pago</button>
       <div style="font-size:.75rem;color:#9aab97;margin-top:8px">Los links de firma se enviarán automáticamente al confirmar el pago</div>
+      <button class="btn-secondary" style="max-width:280px;margin:8px auto 0;display:block" onclick="enviarEmailsSinPago('${r.numero_cert}')">🧪 Modo prueba — Enviar sin pago</button>
     </div>`}
     ${r.partes && r.partes.length > 0 ? `
     <div>
@@ -727,6 +728,14 @@ async function confirmar() {
   }
 }
 
+async function enviarEmailsSinPago(cert) {
+  try {
+    const res = await fetch(`${API}/tramites/${cert}/enviar-emails`, {method:"POST", headers:{"Content-Type":"application/json"}});
+    const data = await res.json();
+    if (data.ok) alert("Emails enviados correctamente.");
+    else alert("Error: " + (data.error || "desconocido"));
+  } catch(e) { alert("Error de conexión."); }
+}
 render();
 </script>
 </body>
