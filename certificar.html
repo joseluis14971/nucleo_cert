@@ -489,7 +489,7 @@ function renderExito() {
       <div style="font-size:.82rem;color:#78400a;margin-bottom:12px">Para activar las firmas, completá el pago:</div>
       <button class="btn-primary" style="max-width:280px;margin:0 auto;display:block" onclick="alert('Integración con Mercado Pago próximamente')">Pagar $${r.monto_total.toLocaleString('es-AR')} ARS con Mercado Pago</button>
       <div style="font-size:.75rem;color:#9aab97;margin-top:8px">Los links de firma se enviarán automáticamente al confirmar el pago</div>
-      <button class="btn-secondary" style="max-width:280px;margin:8px auto 0;display:block" onclick="enviarEmailsSinPago('${r.numero_cert}')">🧪 Modo prueba — Enviar sin pago</button>
+      <button class="btn-secondary" style="max-width:280px;margin:8px auto 0;display:block" id="btnModoPrueba" data-cert="${r.numero_cert}" onclick="enviarEmailsSinPago(this.dataset.cert)">🧪 Modo prueba — Enviar sin pago</button>
     </div>`}
     ${r.partes && r.partes.length > 0 ? `
     <div>
@@ -562,9 +562,9 @@ function imprimirResumen() {
 </div>
 
 <div class="section">
-  <div class="section-title">Documento certificado</div>
-  <div class="dato"><span class="dato-label">Archivo</span><span>${state.documento_nombre}</span></div>
-  <div class="dato"><span class="dato-label">Hash SHA-256</span></div>
+  <div class="section-title">Documento certificado en este acto</div>
+  <div class="dato"><span class="dato-label">Archivo cargado en esta firma</span><span>${state.documento_nombre}</span></div>
+  <div class="dato"><span class="dato-label">Hash SHA-256 — peso del documento cargado</span></div>
   <div class="hash">${state.documento_hash}</div>
 </div>
 
@@ -578,11 +578,25 @@ function imprimirResumen() {
   </table>
 </div>
 
+<div class="section" style="text-align:center;margin-bottom:24px">
+  <div class="section-title">Verificación</div>
+  <div style="display:flex;align-items:center;gap:32px;justify-content:center;margin-top:12px">
+    <div>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https://nucleocert.com/verificar/${r.numero_cert}" width="120" height="120" style="border:4px solid #f0f7f2;border-radius:8px">
+      <div style="font-size:.72rem;color:#5a6b57;margin-top:6px">Escaneá para verificar</div>
+    </div>
+    <div style="text-align:left;font-size:.85rem">
+      <div style="font-weight:700;color:#1a2e1a;margin-bottom:4px">Verificá este certificado</div>
+      <div style="color:#5a6b57;font-size:.78rem">nucleocert.com/verificar/${r.numero_cert}</div>
+      <div style="color:#5a6b57;font-size:.75rem;margin-top:8px">Capa 1: info pública sin autenticación<br>Capa 2: datos completos con tu DNI</div>
+    </div>
+  </div>
+</div>
 <div class="legal">
   El hash SHA-256 del documento identificado arriba será anclado en la blockchain de Núcleo NKL y Bitcoin como prueba permanente e inalterable de su existencia al momento de la certificación.<br><br>
   Núcleo CERT es un servicio de certificación privada de fecha cierta e identidad de firmantes.<br>
   No reemplaza la escritura pública en los actos que la ley argentina exige dicha forma (art. 1017 CCCN).<br><br>
-  nucleocert.com — Núcleo Laboratorios — Moreno, Buenos Aires, Argentina
+  nucleocert.com — nucleolaboratorios.com — Argentina
 </div>
 </body>
 </html>`;
