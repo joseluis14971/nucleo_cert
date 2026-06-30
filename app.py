@@ -760,6 +760,10 @@ def completar_firma(uuid):
                   <div style="font-size:20px;font-weight:900;color:#2d9b5a">{numero_cert}</div>
                   <div style="font-size:13px;color:#5a6b57;margin-top:4px">{tramite['tipo_tramite']} — {total} firmante{'s' if total > 1 else ''}</div>
                 </div>
+                <div style="text-align:center;margin:20px 0">
+                  <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://nucleocert.com/verificar/{numero_cert}" width="150" height="150" style="border:6px solid #f0f7f2;border-radius:10px">
+                  <div style="font-size:.75rem;color:#5a6b57;margin-top:6px">nucleocert.com/verificar/{numero_cert}</div>
+                </div>
                 <p style="color:#374334;font-size:13px">Si verificaste las identidades de todos los firmantes y estás conforme, confirmá el trámite para anclar el documento en blockchain:</p>
                 <div style="text-align:center;margin:24px 0">
                   <a href="{confirm_url}" style="background:#2d9b5a;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:16px;font-weight:700;display:inline-block">✅ Confirmar y anclar en blockchain</a>
