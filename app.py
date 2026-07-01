@@ -594,7 +594,8 @@ def enviar_sms(uuid):
         client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
         verification = client.verify.v2.services(TWILIO_VERIFY_SID).verifications.create(
             to=telefono,
-            channel="sms"
+            channel="sms",
+            locale="es"
         )
         return jsonify({"ok": True, "mensaje": "SMS enviado", "status": verification.status})
     except Exception as e:

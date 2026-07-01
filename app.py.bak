@@ -1,0 +1,396 @@
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
+from datetime import datetime
+import sqlite3, os, uuid, smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+app = Flask(__name__)
+CORS(app, origins=["https://nucleocert.com", "http://nucleocert.com", "https://www.nucleocert.com"])
+
+DB = "/root/cert/cert.db"
+NKL_DB = "/root/nkl/nkl_pool.db"
+
+GMAIL_USER = "nucleonkl@gmail.com"
+GMAIL_PASS = "ozdctslztmukedcw"
+
+def get_db():
+    conn = sqlite3.connect(DB)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def get_nkl_db():
+    conn = sqlite3.connect(NKL_DB)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    conn = get_db()
+    c = conn.cursor()
+    c.executescript("""
+    CREATE TABLE IF NOT EXISTS paises (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        codigo TEXT UNIQUE NOT NULL,
+        nombre TEXT NOT NULL,
+        bandera TEXT,
+        estado TEXT DEFAULT 'en_preparacion',
+        moneda TEXT,
+        precio_certificado INTEGER DEFAULT 0,
+        disclaimer_legal TEXT
+    );
+    CREATE TABLE IF NOT EXISTS tramites (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        numero_cert TEXT UNIQUE,
+        pais_codigo TEXT DEFAULT 'AR',
+        categoria TEXT,
+        tipo_tramite TEXT,
+        fecha_creacion TEXT,
+        fecha_certificacion TEXT,
+        hash_documento TEXT,
+        estado TEXT DEFAULT 'borrador',
+        modo TEXT DEFAULT 'presencial',
+        estado_pago TEXT DEFAULT 'pendiente',
+        mp_preference_id TEXT,
+        mp_payment_id TEXT,
+        monto_total INTEGER DEFAULT 0,
+        solicitante_nombre TEXT,
+        solicitante_doc TEXT,
+        solicitante_tipo TEXT,
+        solicitante_email TEXT,
+        solicitante_telefono TEXT,
+        licencia_nkl INTEGER DEFAULT 0,
+        minero_username TEXT,
+        emails_enviados INTEGER DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS partes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tramite_id INTEGER,
+        rol TEXT,
+        nombre_completo TEXT,
+        dni_numero TEXT,
+        sms_verificado INTEGER DEFAULT 0,
+        firma_timestamp TEXT,
+        link_uuid TEXT UNIQUE,
+        completado INTEGER DEFAULT 0,
+        email TEXT,
+        FOREIGN KEY (tramite_id) REFERENCES tramites(id)
+    );
+    INSERT OR IGNORE INTO paises (codigo, nombre, bandera, estado, moneda, precio_certificado, disclaimer_legal)
+    VALUES (
+        'AR', 'Argentina', '🇦🇷', 'activo', 'ARS', 10000,
+        'Núcleo CERT es un servicio de certificación privada de fecha cierta e identidad de firmantes. No reemplaza la escritura pública en los actos que la ley argentina exige dicha forma (art. 1017 CCCN). Para consultas sobre validez legal consulte a un profesional habilitado.'
+    );
+    """)
+    conn.commit()
+    conn.close()
+
+def enviar_email(destinatario, nombre, link, numero_cert, tipo_tramite, solicitante):
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"Núcleo CERT — Invitación a firmar: {tipo_tramite}"
+        msg["From"] = f"Núcleo CERT <{GMAIL_USER}>"
+        msg["To"] = destinatario
+
+        html = f"""
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#f0f7f2;padding:32px">
+          <div style="background:#fff;border-radius:12px;padding:32px;border:1px solid #e5e7eb">
+            <div style="text-align:center;margin-bottom:24px">
+              <h1 style="color:#2d9b5a;font-size:22px;margin:0">Núcleo CERT</h1>
+              <p style="color:#5a6b57;font-size:13px;margin:4px 0">Certificación privada · Prueba permanente</p>
+            </div>
+            <p style="color:#111;font-size:16px">Hola <strong>{nombre}</strong>,</p>
+            <p style="color:#374334;font-size:14px;line-height:1.7">
+              <strong>{solicitante}</strong> te invitó a firmar el siguiente documento:
+            </p>
+            <div style="background:#f0f7f2;border-radius:8px;padding:16px;margin:20px 0;text-align:center">
+              <p style="font-size:13px;color:#5a6b57;margin:0 0 4px">Trámite</p>
+              <p style="font-size:16px;font-weight:700;color:#111;margin:0">{tipo_tramite}</p>
+              <p style="font-size:12px;color:#9aab97;margin:8px 0 0">Certificado N° {numero_cert}</p>
+            </div>
+            <p style="color:#374334;font-size:14px;line-height:1.7">
+              Para completar tu firma necesitás:
+            </p>
+            <ul style="color:#374334;font-size:13px;line-height:2">
+              <li>DNI físico (frente y dorso)</li>
+              <li>Tu celular con cámara</li>
+              <li>Acceso a tu número de teléfono para verificación SMS</li>
+            </ul>
+            <div style="text-align:center;margin:32px 0">
+              <a href="{link}" style="background:#2d9b5a;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:16px;font-weight:700;display:inline-block">
+                Firmar ahora →
+              </a>
+            </div>
+            <p style="color:#9aab97;font-size:11px;line-height:1.6;text-align:center">
+              Este link es personal e intransferible. Expira en 72 horas.<br>
+              Núcleo CERT es un servicio de certificación privada de fecha cierta e identidad de firmantes.<br>
+              No reemplaza la escritura pública en los actos que la ley argentina exige dicha forma (art. 1017 CCCN).
+            </p>
+          </div>
+        </div>
+        """
+        msg.attach(MIMEText(html, "html"))
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(GMAIL_USER, GMAIL_PASS)
+            server.sendmail(GMAIL_USER, destinatario, msg.as_string())
+        return True
+    except Exception as e:
+        print(f"Error email: {e}")
+        return False
+
+# ── RUTAS ESTÁTICAS ──
+@app.route("/")
+def landing():
+    return send_from_directory("/var/www/nucleocert", "index.html")
+
+@app.route("/certificar")
+def certificar():
+    return send_from_directory("/var/www/nucleocert", "certificar.html")
+
+# ── API ──
+@app.route("/api/paises", methods=["GET"])
+def get_paises():
+    conn = get_db()
+    paises = conn.execute("SELECT * FROM paises ORDER BY estado DESC, nombre ASC").fetchall()
+    conn.close()
+    return jsonify([dict(p) for p in paises])
+
+@app.route("/api/validar-minero", methods=["POST"])
+def validar_minero():
+    data = request.json
+    username = data.get("username", "").strip().lower()
+    api_key = data.get("api_key", "").strip()
+    if not username or not api_key:
+        return jsonify({"valido": False, "mensaje": "Usuario y key requeridos"}), 400
+    try:
+        conn = get_nkl_db()
+        minero = conn.execute(
+            "SELECT username, banned FROM miners WHERE username=? AND api_key=?",
+            (username, api_key)
+        ).fetchone()
+        conn.close()
+        if not minero:
+            return jsonify({"valido": False, "mensaje": "Usuario o key incorrectos"}), 200
+        if minero["banned"]:
+            return jsonify({"valido": False, "mensaje": "Usuario suspendido"}), 200
+        return jsonify({"valido": True, "username": minero["username"]}), 200
+    except Exception as e:
+        return jsonify({"valido": False, "mensaje": str(e)}), 500
+
+@app.route("/api/tramites/nuevo", methods=["POST"])
+def nuevo_tramite():
+    data = request.json
+    if not data:
+        return jsonify({"error": "Sin datos"}), 400
+
+    required = ["pais_codigo", "categoria", "tipo_tramite", "solicitante_nombre",
+                "solicitante_doc", "solicitante_tipo", "solicitante_email", "partes"]
+    for f in required:
+        if f not in data:
+            return jsonify({"error": f"Falta campo: {f}"}), 400
+
+    conn = get_db()
+    pais = conn.execute("SELECT * FROM paises WHERE codigo=? AND estado='activo'",
+                        (data["pais_codigo"],)).fetchone()
+    if not pais:
+        conn.close()
+        return jsonify({"error": "País no disponible"}), 400
+
+    licencia_nkl = int(data.get("licencia_nkl", 0))
+    n_partes = len(data["partes"])
+    monto = 0 if licencia_nkl else pais["precio_certificado"] * n_partes
+    fecha = datetime.utcnow().isoformat()
+    year = datetime.utcnow().year
+
+    c = conn.cursor()
+    c.execute("""
+        INSERT INTO tramites (pais_codigo, categoria, tipo_tramite, fecha_creacion,
+            estado, modo, estado_pago, monto_total,
+            solicitante_nombre, solicitante_doc, solicitante_tipo,
+            solicitante_email, solicitante_telefono, licencia_nkl, minero_username)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    """, (
+        data["pais_codigo"], data["categoria"], data["tipo_tramite"], fecha,
+        "borrador", data.get("modo", "presencial"),
+        "gratis" if licencia_nkl else "pendiente",
+        monto,
+        data["solicitante_nombre"], data["solicitante_doc"], data["solicitante_tipo"],
+        data["solicitante_email"], data.get("solicitante_telefono", ""),
+        licencia_nkl, data.get("minero_username", "")
+    ))
+    tramite_id = c.lastrowid
+    numero_cert = f"CERT-{year}-{tramite_id:06d}"
+    c.execute("UPDATE tramites SET numero_cert=? WHERE id=?", (numero_cert, tramite_id))
+
+    links = []
+    for parte in data["partes"]:
+        link_uuid = str(uuid.uuid4())
+        c.execute("""
+            INSERT INTO partes (tramite_id, rol, nombre_completo, dni_numero, link_uuid, email)
+            VALUES (?,?,?,?,?,?)
+        """, (tramite_id, parte.get("rol","firmante"),
+              parte.get("nombre",""), parte.get("dni",""),
+              link_uuid, parte.get("email","")))
+        links.append({
+            "rol": parte.get("rol","firmante"),
+            "nombre": parte.get("nombre",""),
+            "email": parte.get("email",""),
+            "link": f"https://nucleocert.com/firmar/{link_uuid}"
+        })
+
+    conn.commit()
+    conn.close()
+
+    # Si es gratis (minero/NKL) enviamos emails de inmediato
+    emails_enviados = []
+    if licencia_nkl:
+        for p in links:
+            if p.get("email"):
+                ok = enviar_email(
+                    p["email"], p["nombre"], p["link"],
+                    numero_cert, data["tipo_tramite"], data["solicitante_nombre"]
+                )
+                emails_enviados.append({"email": p["email"], "enviado": ok})
+
+    return jsonify({
+        "ok": True,
+        "numero_cert": numero_cert,
+        "tramite_id": tramite_id,
+        "monto_total": monto,
+        "estado_pago": "gratis" if licencia_nkl else "pendiente",
+        "partes": links,
+        "emails_enviados": emails_enviados
+    }), 201
+
+@app.route("/api/tramites/<numero_cert>/enviar-emails", methods=["POST"])
+def enviar_emails_tramite(numero_cert):
+    """Llamado después de confirmar el pago para enviar los links de firma"""
+    conn = get_db()
+    t = conn.execute("SELECT * FROM tramites WHERE numero_cert=?", (numero_cert,)).fetchone()
+    if not t:
+        conn.close()
+        return jsonify({"error": "No encontrado"}), 404
+
+    partes = conn.execute("SELECT * FROM partes WHERE tramite_id=?", (t["id"],)).fetchall()
+
+    # marcar como pagado
+    conn.execute("UPDATE tramites SET estado_pago='aprobado', emails_enviados=1 WHERE numero_cert=?",
+                 (numero_cert,))
+    conn.commit()
+    conn.close()
+
+    resultados = []
+    for p in partes:
+        link = f"https://nucleocert.com/firmar/{p['link_uuid']}"
+        if p["email"]:
+            ok = enviar_email(
+                p["email"], p["nombre_completo"], link,
+                numero_cert, dict(t)["tipo_tramite"], dict(t)["solicitante_nombre"]
+            )
+            resultados.append({"nombre": p["nombre_completo"], "email": p["email"], "enviado": ok})
+
+    return jsonify({"ok": True, "resultados": resultados})
+
+@app.route("/api/verificar/<numero_cert>", methods=["GET"])
+def verificar_publico(numero_cert):
+    conn = get_db()
+    t = conn.execute("""
+        SELECT numero_cert, tipo_tramite, fecha_certificacion, estado, hash_documento, pais_codigo
+        FROM tramites WHERE numero_cert=?
+    """, (numero_cert,)).fetchone()
+    conn.close()
+    if not t:
+        return jsonify({"valido": False, "mensaje": "Certificado no encontrado"}), 404
+    return jsonify({"valido": True, **dict(t)})
+
+@app.route("/api/buscar-por-dni", methods=["POST"])
+def buscar_por_dni():
+    data = request.json
+    dni = data.get("dni_numero", "").strip()
+    nombre = data.get("nombre_completo", "").strip().upper()
+    if not dni or not nombre:
+        return jsonify({"error": "DNI y nombre requeridos"}), 400
+    conn = get_db()
+    partes = conn.execute("""
+        SELECT p.rol, p.firma_timestamp, p.completado,
+               t.numero_cert, t.tipo_tramite, t.fecha_creacion, t.estado, t.pais_codigo
+        FROM partes p
+        JOIN tramites t ON p.tramite_id = t.id
+        WHERE p.dni_numero=? AND UPPER(p.nombre_completo) LIKE ?
+        ORDER BY t.fecha_creacion DESC
+    """, (dni, f"%{nombre}%")).fetchall()
+    conn.close()
+    return jsonify({"resultados": [dict(p) for p in partes]})
+
+if __name__ == "__main__":
+    init_db()
+    app.run(host="0.0.0.0", port=5004, debug=False)
+
+@app.route("/api/upload-documento", methods=["POST"])
+def upload_documento():
+    if 'archivo' not in request.files:
+        return jsonify({"error": "Sin archivo"}), 400
+    archivo = request.files['archivo']
+    if not archivo.filename.endswith('.pdf'):
+        return jsonify({"error": "Solo se aceptan archivos PDF"}), 400
+    import hashlib, uuid as _uuid
+    contenido = archivo.read()
+    sha256 = hashlib.sha256(contenido).hexdigest()
+    nombre = f"{_uuid.uuid4()}.pdf"
+    ruta = f"/root/cert/uploads/{nombre}"
+    with open(ruta, 'wb') as f:
+        f.write(contenido)
+    return jsonify({"ok": True, "hash": sha256, "archivo": nombre}), 201
+
+@app.route("/api/firmar/<uuid>", methods=["GET"])
+def get_firma(uuid):
+    conn = get_db()
+    p = conn.execute("SELECT * FROM partes WHERE link_uuid=?", (uuid,)).fetchone()
+    if not p:
+        conn.close()
+        return jsonify({"ok": False, "error": "Link no válido o ya utilizado"}), 404
+    t = conn.execute("SELECT * FROM tramites WHERE id=?", (p["tramite_id"],)).fetchone()
+    conn.close()
+    if p["completado"]:
+        return jsonify({"ok": False, "error": "Esta firma ya fue completada"}), 400
+    return jsonify({"ok": True, "parte": dict(p), "tramite": dict(t)})
+
+@app.route("/api/firmar/<uuid>/enviar-sms", methods=["POST"])
+def enviar_sms(uuid):
+    # Por ahora simulado — integrar Twilio o similar después
+    return jsonify({"ok": True, "mensaje": "SMS enviado"})
+
+@app.route("/api/firmar/<uuid>/completar", methods=["POST"])
+def completar_firma(uuid):
+    data = request.json
+    conn = get_db()
+    p = conn.execute("SELECT * FROM partes WHERE link_uuid=?", (uuid,)).fetchone()
+    if not p:
+        conn.close()
+        return jsonify({"ok": False, "error": "Link no válido"}), 404
+    if p["completado"]:
+        conn.close()
+        return jsonify({"ok": False, "error": "Ya completada"}), 400
+    import os as _os
+    carpeta = f"/root/cert/uploads/{uuid}"
+    _os.makedirs(carpeta, exist_ok=True)
+    # Guardar imágenes
+    for campo in ["dni_frente","dni_dorso","selfie","video"]:
+        val = data.get(campo,"")
+        if val and "," in val:
+            import base64 as _b64
+            ext = "jpg" if campo != "video" else "webm"
+            raw = _b64.b64decode(val.split(",")[1])
+            with open(f"{carpeta}/{campo}.{ext}", "wb") as f:
+                f.write(raw)
+    conn.execute("""UPDATE partes SET completado=1, nombre_completo=?, dni_numero=?,
+        firma_timestamp=?, sms_verificado=1 WHERE link_uuid=?""",
+        (data.get("nombre_completo",""), data.get("dni_numero",""),
+         datetime.utcnow().isoformat(), uuid))
+    conn.commit()
+    # Verificar si todos firmaron
+    tramite_id = p["tramite_id"]
+    total = conn.execute("SELECT COUNT(*) FROM partes WHERE tramite_id=?", (tramite_id,)).fetchone()[0]
+    completados = conn.execute("SELECT COUNT(*) FROM partes WHERE tramite_id=? AND completado=1", (tramite_id,)).fetchone()[0]
+    numero_cert = conn.execute("SELECT numero_cert FROM tramites WHERE id=?", (tramite_id,)).fetchone()[0]
+    conn.close()
+    return jsonify({"ok": True, "numero_cert": numero_cert, "total": total, "completados": completados})

@@ -1,0 +1,6 @@
+[2026-07-01 19:55:18 -0300] [1034318] [INFO] Starting gunicorn 26.0.0
+[2026-07-01 19:55:18 -0300] [1034318] [INFO] Listening at: http://0.0.0.0:5004 (1034318)
+[2026-07-01 19:55:18 -0300] [1034318] [INFO] Using worker: sync
+[2026-07-01 19:55:18 -0300] [1034325] [INFO] Booting worker with pid: 1034325
+[2026-07-01 19:55:19 -0300] [1034326] [INFO] Booting worker with pid: 1034326
+[2026-07-01 19:55:19 -0300] [1034318] [INFO] Control socket listening at /run/user/0/gunicorn.ctl
