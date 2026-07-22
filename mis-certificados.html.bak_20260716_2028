@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mis Certificados — Núcleo CERT</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: #f4f7f4; color: #2d3d2d; min-height: 100vh; }
+
+  /* TOPBAR */
+  .topbar {
+    background: #1a2e1a;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .topbar .logo { color: #fff; font-size: 1.1rem; font-weight: bold; text-decoration: none; }
+  .topbar .logo span { color: #4caf7d; }
+  .topbar-links { display: flex; gap: 12px; }
+  .topbar-links a {
+    padding: 7px 16px;
+    border-radius: 6px;
+    font-size: .85rem;
+    font-weight: bold;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .btn-verificar { background: #e65c00; color: #fff; }
+  .btn-certificar { background: #2d9b5a; color: #fff; }
+
+  /* MAIN */
+  .container { max-width: 800px; margin: 40px auto; padding: 0 16px; }
+
+  .titulo {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .titulo h1 { font-size: 1.6rem; color: #1a2e1a; margin-bottom: 8px; }
+  .titulo p { color: #5a6b57; font-size: .95rem; }
+
+  /* BUSCADOR */
+  .buscador {
+    background: #fff;
+    border-radius: 12px;
+    padding: 28px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    margin-bottom: 28px;
+  }
+  .buscador label { font-weight: bold; font-size: .9rem; color: #2d3d2d; display: block; margin-bottom: 8px; }
+  .buscador-row { display: flex; gap: 10px; }
+  .buscador input {
+    flex: 1;
+    padding: 11px 14px;
+    border: 1.5px solid #c8d8c4;
+    border-radius: 8px;
+    font-size: 1rem;
+    outline: none;
+    transition: border .2s;
+  }
+  .buscador input:focus { border-color: #2d9b5a; }
+  .btn-buscar {
+    padding: 11px 24px;
+    background: #2d9b5a;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: .95rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .btn-buscar:hover { background: #237a47; }
+  .error-msg { color: #c0392b; font-size: .85rem; margin-top: 8px; display: none; }
+
+  /* RESULTADOS */
+  .resultados { display: none; }
+  .resultados-header {
+    font-size: .9rem;
+    color: #5a6b57;
+    margin-bottom: 16px;
+    padding-left: 4px;
+  }
+  .resultados-header strong { color: #1a2e1a; }
+
+  /* CARD */
+  .cert-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.07);
+    margin-bottom: 16px;
+    border-left: 4px solid #2d9b5a;
+  }
+  .cert-card.pendiente { border-left-color: #e6a817; }
+  .cert-card.borrador { border-left-color: #aaa; }
+
+  .cert-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .cert-numero { font-weight: bold; font-size: 1rem; color: #1a2e1a; }
+  .cert-estado {
+    font-size: .78rem;
+    font-weight: bold;
+    padding: 4px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+  }
+  .estado-confirmado { background: #e8f5ee; color: #2d9b5a; }
+  .estado-pendiente { background: #fef3dc; color: #b8860b; }
+  .estado-borrador { background: #f0f0f0; color: #777; }
+
+  .cert-tipo { font-size: .95rem; color: #2d3d2d; margin-bottom: 6px; }
+  .cert-meta { font-size: .82rem; color: #7a8b77; margin-bottom: 10px; }
+  .cert-meta span { margin-right: 16px; }
+
+  .cert-rol {
+    display: inline-block;
+    background: #f0f7f2;
+    color: #2d7a4a;
+    font-size: .8rem;
+    padding: 3px 10px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+  }
+
+  .cert-firma {
+    font-size: .83rem;
+    margin-bottom: 10px;
+  }
+  .firma-ok { color: #2d9b5a; }
+  .firma-pendiente { color: #e6a817; }
+
+  .cert-tx {
+    font-size: .75rem;
+    color: #7a8b77;
+    background: #f9faf9;
+    padding: 6px 10px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    word-break: break-all;
+  }
+  .cert-tx strong { color: #2d3d2d; }
+
+  .btn-verificar-cert {
+    display: inline-block;
+    padding: 8px 18px;
+    background: #e65c00;
+    color: #fff;
+    border-radius: 8px;
+    font-size: .85rem;
+    font-weight: bold;
+    text-decoration: none;
+    transition: background .2s;
+  }
+  .btn-verificar-cert:hover { background: #c44d00; }
+
+  /* VACIO */
+  .vacio {
+    text-align: center;
+    padding: 40px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.07);
+    display: none;
+  }
+  .vacio p { color: #7a8b77; font-size: .95rem; }
+
+  /* LOADING */
+  .loading { text-align: center; padding: 30px; display: none; color: #5a6b57; }
+
+  /* FOOTER */
+  footer {
+    text-align: center;
+    padding: 32px 16px;
+    color: #9aab97;
+    font-size: .8rem;
+    margin-top: 40px;
+  }
+  footer a { color: #2d9b5a; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="logo" href="https://nucleocert.com">Núcleo <span>CERT</span></a>
+  <div class="topbar-links">
+    <a class="btn-verificar" href="https://nucleocert.com/verificar">VERIFICAR</a>
+    <a class="btn-certificar" href="https://nucleocert.com/certificar">Certificar ahora</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="titulo">
+    <h1>Mis Certificados</h1>
+    <p>Ingresá tu número de DNI para ver todos los trámites en los que participaste como firmante.</p>
+  </div>
+
+  <div class="buscador">
+    <label>Número de DNI (sin puntos)</label>
+    <div class="buscador-row">
+      <input type="text" id="inputDni" placeholder="Ej: 30123456" maxlength="12" inputmode="numeric">
+      <button class="btn-buscar" onclick="buscar()">Buscar</button>
+    </div>
+    <div class="error-msg" id="errorMsg">Ingresá un DNI válido (mínimo 7 dígitos).</div>
+  </div>
+
+  <div class="loading" id="loading">Buscando certificados...</div>
+
+  <div class="resultados" id="resultados">
+    <div class="resultados-header" id="resultadosHeader"></div>
+    <div id="listaCerts"></div>
+  </div>
+
+  <div class="vacio" id="vacio">
+    <p>No se encontraron certificados para ese DNI.</p>
+  </div>
+
+</div>
+
+<footer>
+  <a href="https://nucleocert.com">nucleocert.com</a> &nbsp;·&nbsp;
+  <a href="https://nucleolaboratorios.com">nucleolaboratorios.com</a> &nbsp;·&nbsp; Argentina
+</footer>
+
+<script>
+  // Permitir Enter en el input
+  document.getElementById('inputDni').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') buscar();
+  });
+
+  // Leer DNI de la URL si viene por parámetro
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('dni')) {
+    document.getElementById('inputDni').value = params.get('dni');
+    buscar();
+  }
+
+  function buscar() {
+    const dni = document.getElementById('inputDni').value.trim().replace(/\./g, '');
+    const errorMsg = document.getElementById('errorMsg');
+    const loading = document.getElementById('loading');
+    const resultados = document.getElementById('resultados');
+    const vacio = document.getElementById('vacio');
+
+    errorMsg.style.display = 'none';
+    resultados.style.display = 'none';
+    vacio.style.display = 'none';
+
+    if (!dni || dni.length < 7 || isNaN(dni)) {
+      errorMsg.style.display = 'block';
+      return;
+    }
+
+    loading.style.display = 'block';
+
+    fetch(`/api/mis-certificados?dni=${encodeURIComponent(dni)}`)
+      .then(r => r.json())
+      .then(data => {
+        loading.style.display = 'none';
+        if (!data.ok || data.total === 0) {
+          vacio.style.display = 'block';
+          return;
+        }
+        renderCerts(data.certificados, dni);
+      })
+      .catch(() => {
+        loading.style.display = 'none';
+        errorMsg.textContent = 'Error al conectar con el servidor.';
+        errorMsg.style.display = 'block';
+      });
+  }
+
+  function renderCerts(certs, dni) {
+    const resultados = document.getElementById('resultados');
+    const header = document.getElementById('resultadosHeader');
+    const lista = document.getElementById('listaCerts');
+
+    header.innerHTML = `DNI <strong>${dni}</strong> — ${certs.length} certificado${certs.length !== 1 ? 's' : ''} encontrado${certs.length !== 1 ? 's' : ''}`;
+    lista.innerHTML = '';
+
+    certs.forEach(c => {
+      const estadoClass = c.estado === 'confirmado' ? 'confirmado' : c.estado === 'pendiente' ? 'pendiente' : 'borrador';
+      const estadoLabel = c.estado === 'confirmado' ? 'Confirmado' : c.estado === 'pendiente' ? 'Pendiente' : c.estado;
+      const fechaCreacion = c.fecha_creacion ? c.fecha_creacion.split('T')[0] : '—';
+      const fechaCert = c.fecha_certificacion ? c.fecha_certificacion.split('T')[0] : null;
+
+      const firmaHtml = c.firmado
+        ? `<div class="cert-firma firma-ok">✅ Firmado el ${c.firma_timestamp ? c.firma_timestamp.split('T')[0] : '—'}</div>`
+        : `<div class="cert-firma firma-pendiente">⏳ Firma pendiente</div>`;
+
+      const txHtml = c.tx_nkl
+        ? `<div class="cert-tx"><strong>TX NKL:</strong> ${c.tx_nkl}</div>`
+        : '';
+
+      const div = document.createElement('div');
+      div.className = `cert-card ${estadoClass}`;
+      div.innerHTML = `
+        <div class="cert-top">
+          <div class="cert-numero">${c.numero_cert}</div>
+          <span class="cert-estado estado-${estadoClass}">${estadoLabel}</span>
+        </div>
+        <div class="cert-tipo">${c.tipo_tramite}</div>
+        <div class="cert-meta">
+          <span>📁 ${c.categoria}</span>
+          <span>📅 ${fechaCreacion}</span>
+          ${fechaCert ? `<span>✅ Cert: ${fechaCert}</span>` : ''}
+          <span>👤 Solicitante: ${c.solicitante}</span>
+        </div>
+        <div class="cert-rol">${c.rol}</div>
+        ${firmaHtml}
+        ${txHtml}
+        <a class="btn-verificar-cert" href="${c.verificar_url}" target="_blank">Ver certificado</a>
+      `;
+      lista.appendChild(div);
+    });
+
+    resultados.style.display = 'block';
+  }
+</script>
+
+</body>
+</html>

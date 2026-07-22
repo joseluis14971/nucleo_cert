@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verificar Certificado — Núcleo CERT</title>
+<link rel="icon" href="/favicon.ico">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;background:#f0f7f2;min-height:100vh;padding:24px 16px}
+  .header{text-align:center;margin-bottom:32px}
+  .logo{font-size:1.6rem;font-weight:900;color:#2d9b5a}
+  .logo span{color:#1a2e1a}
+  .card{background:#fff;border-radius:14px;border:1px solid #e5e7eb;padding:32px;max-width:640px;margin:0 auto 24px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+  .eyebrow{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#2d9b5a;margin-bottom:8px}
+  .titulo{font-size:1.3rem;font-weight:700;margin-bottom:6px;color:#1a2e1a}
+  .sub{font-size:.9rem;color:#5a6b57;margin-bottom:24px;line-height:1.6}
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:.82rem;font-weight:600;color:#374334;margin-bottom:6px}
+  .field input{width:100%;padding:12px 14px;border:1.5px solid #d1d5db;border-radius:8px;font-size:.95rem;outline:none}
+  .field input:focus{border-color:#2d9b5a}
+  .btn{width:100%;padding:14px;background:#2d9b5a;color:#fff;border:none;border-radius:8px;font-size:1rem;font-weight:700;cursor:pointer}
+  .btn:hover{background:#1e7a43}
+  .error-msg{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;font-size:.82rem;color:#991b1b;margin-bottom:14px;display:none}
+  .success-box{background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;padding:20px;margin-bottom:16px}
+  .dato{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:.88rem}
+  .dato-label{color:#5a6b57;font-weight:600}
+  .dato-value{color:#1a2e1a;text-align:right;max-width:60%}
+  .hash{font-size:.68rem;color:#5a6b57;word-break:break-all;background:#f9f9f9;padding:8px;border-radius:6px;margin-top:4px;font-family:monospace}
+  .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:700}
+  .badge-green{background:#dcfce7;color:#15803d}
+  .badge-yellow{background:#fef9c3;color:#78400a}
+  .badge-gray{background:#f3f4f6;color:#6b7280}
+  .parte-item{background:#f9fafb;border-radius:8px;padding:12px;margin-bottom:8px;font-size:.85rem}
+  .parte-nombre{font-weight:700;color:#1a2e1a}
+  .parte-datos{color:#5a6b57;margin-top:2px}
+  .divider{border:none;border-top:1px solid #e5e7eb;margin:20px 0}
+  .legal{font-size:.75rem;color:#9aab97;line-height:1.6;text-align:center;margin-top:20px}
+  .link-volver{display:block;text-align:center;margin-top:16px;color:#2d9b5a;font-size:.88rem;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo">Núcleo <span>CERT</span></div>
+  <div style="font-size:.82rem;color:#5a6b57;margin-top:4px">Verificación de certificados</div>
+</div>
+
+<div class="card" id="cardBuscar">
+  <div class="eyebrow">Verificación pública</div>
+  <div class="titulo">Verificar certificado</div>
+  <div class="sub">Ingresá el número de certificado para verificar su autenticidad.</div>
+  <div class="field">
+    <label>Número de certificado</label>
+    <input type="text" id="inputCert" placeholder="CERT-2026-000001" style="text-transform:uppercase">
+  </div>
+  <div class="error-msg" id="errBuscar"></div>
+  <button class="btn" onclick="buscarCert()">Verificar →</button>
+</div>
+
+<div class="card" id="cardCapa1" style="display:none">
+  <div class="eyebrow">Capa 1 — Información pública</div>
+  <div id="capa1Content"></div>
+  <hr class="divider">
+  <div class="eyebrow">Capa 2 — Información privada</div>
+  <div class="sub" style="margin-top:8px">Ingresá tu DNI para ver los nombres, roles y fechas de firma de todos los intervinientes.</div>
+  <div class="field">
+    <label>Tu número de DNI</label>
+    <input type="text" id="inputDni" placeholder="Sin puntos ni espacios" inputmode="numeric">
+  </div>
+  <div class="error-msg" id="errCapa2"></div>
+  <button class="btn" onclick="verificarCapa2()">Ver datos completos →</button>
+</div>
+
+<div class="card" id="cardCapa2" style="display:none">
+  <div class="eyebrow">Capa 2 — Información privada</div>
+  <div id="capa2Content"></div>
+</div>
+
+<a href="/" class="link-volver">← Volver a Núcleo CERT</a>
+
+<script>
+const API = "https://nucleocert.com";
+let certActual = "";
+
+function estadoBadge(estado) {
+  if (estado === "confirmado") return '<span class="badge badge-green">✓ Confirmado</span>';
+  if (estado === "borrador") return '<span class="badge badge-yellow">⏳ En proceso</span>';
+  return '<span class="badge badge-gray">' + estado + '</span>';
+}
+
+function formatFecha(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso + "Z");
+  return d.toLocaleString("es-AR", {timeZone:"America/Argentina/Buenos_Aires", day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit"});
+}
+
+async function buscarCert() {
+  const cert = document.getElementById("inputCert").value.trim().toUpperCase();
+  if (!cert) { mostrarError("errBuscar", "Ingresá el número de certificado."); return; }
+  try {
+    const res = await fetch(API + "/api/verificar/" + cert);
+    const data = await res.json();
+    if (!data.ok) { mostrarError("errBuscar", data.error || "Certificado no encontrado."); return; }
+    certActual = cert;
+    document.getElementById("errBuscar").style.display = "none";
+    document.getElementById("cardCapa1").style.display = "block";
+    document.getElementById("cardBuscar").style.display = "none";
+    const completados = data.firmantes_completados || 0;
+    const total = data.total_firmantes || 0;
+    document.getElementById("capa1Content").innerHTML = `
+      <div class="success-box">
+        <div style="text-align:center;margin-bottom:16px">
+          <div style="font-size:.82rem;color:#5a6b57">Certificado</div>
+          <div style="font-size:1.4rem;font-weight:900;color:#2d9b5a">${data.numero_cert}</div>
+          <div style="margin-top:6px">${estadoBadge(data.estado)}</div>
+        </div>
+        <div class="dato"><span class="dato-label">Tipo de trámite</span><span class="dato-value">${data.tipo_tramite || "—"}</span></div>
+        <div class="dato"><span class="dato-label">Categoría</span><span class="dato-value">${data.categoria || "—"}</span></div>
+        <div class="dato"><span class="dato-label">País</span><span class="dato-value">🇦🇷 Argentina</span></div>
+        <div class="dato"><span class="dato-label">Fecha de creación</span><span class="dato-value">${formatFecha(data.fecha_creacion)}</span></div>
+        <div class="dato"><span class="dato-label">Fecha de confirmación</span><span class="dato-value">${formatFecha(data.fecha_certificacion)}</span></div>
+        <div class="dato"><span class="dato-label">Firmantes</span><span class="dato-value">${completados} de ${total} completados</span></div>
+        <div class="dato"><span class="dato-label">Anclaje NKL</span><span class="dato-value">${data.tx_nkl || "Pendiente"}</span></div>
+        <div class="dato" id="fila-btc" style="display:none"><span class="dato-label">Anclaje Bitcoin</span><span class="dato-value">${data.tx_btc || "Pendiente"}</span></div>
+        ${data.documento_hash ? `
+        <div style="margin-top:16px;padding:14px;background:#f0f7f2;border-radius:8px;border:1px solid #c8e6c9">
+          <div style="font-size:.82rem;font-weight:700;color:#2d5a3d;margin-bottom:4px">&#128274; Huella digital del documento (SHA-256)</div>
+          <div class="hash" style="margin-bottom:8px">${data.documento_hash}</div>
+          <div style="font-size:.78rem;color:#5a6b57;margin-bottom:12px">
+            Es un c&oacute;digo matem&aacute;tico &uacute;nico generado a partir del contenido del archivo PDF. Si alguien modifica el documento aunque sea un car&aacute;cter, este c&oacute;digo cambia completamente. Es la misma tecnolog&iacute;a que protege la blockchain de Bitcoin.
+          </div>
+          <div style="font-size:.82rem;font-weight:700;color:#2d5a3d;margin-bottom:8px">&iquest;Ten&eacute;s el documento original? Verific&aacute; que no fue alterado</div>
+          <div id="zonaVerificar" style="border:2px dashed #a5d6a7;border-radius:8px;padding:16px;text-align:center;cursor:pointer;background:#fff" onclick="document.getElementById('inputPdf').click()">
+            <div style="font-size:1.5rem;margin-bottom:4px">&#128196;</div>
+            <div style="font-size:.85rem;color:#2d7a4a;font-weight:600">Hac&eacute; clic o arrastr&aacute; el PDF aqu&iacute;</div>
+            <div style="font-size:.75rem;color:#7a8b77;margin-top:4px">El archivo nunca se sube a ning&uacute;n servidor &mdash; todo se procesa en tu dispositivo</div>
+          </div>
+          <input type="file" id="inputPdf" accept=".pdf" style="display:none" onchange="verificarPDF(this, '${data.documento_hash}')">
+          <div id="resultadoVerificacion" style="margin-top:12px;display:none"></div>
+        </div>` : ""}
+      </div>
+      <div class="legal">Pod&eacute;s verificar la autenticidad del documento original subiendo el PDF arriba. El c&oacute;digo se calcula en tu dispositivo sin enviarse a ning&uacute;n servidor.</div>
+    `;
+  } catch(e) {
+    mostrarError("errBuscar", "Error de conexión. Intentá de nuevo.");
+  }
+}
+
+async function verificarPDF(input, hashRegistrado) {
+  const file = input.files[0];
+  if (!file) return;
+  const resultado = document.getElementById("resultadoVerificacion");
+  resultado.style.display = "block";
+  resultado.innerHTML = '<div style="text-align:center;color:#5a6b57;font-size:.85rem">Calculando huella digital...</div>';
+  try {
+    const buffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashCalculado = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+    if (hashCalculado === hashRegistrado.toLowerCase()) {
+      resultado.innerHTML = '<div style="background:#e8f5ee;border:1px solid #4caf7d;border-radius:8px;padding:14px;text-align:center"><div style="font-size:1.3rem">&#9989;</div><div style="font-weight:700;color:#2d7a4a;font-size:.9rem">Documento aut&eacute;ntico</div><div style="font-size:.78rem;color:#5a6b57;margin-top:4px">La huella digital coincide. Este archivo es id&eacute;ntico al certificado y no fue modificado.</div></div>';
+    } else {
+      resultado.innerHTML = '<div style="background:#fdeaea;border:1px solid #e57373;border-radius:8px;padding:14px;text-align:center"><div style="font-size:1.3rem">&#10060;</div><div style="font-weight:700;color:#c0392b;font-size:.9rem">El documento NO coincide</div><div style="font-size:.78rem;color:#5a6b57;margin-top:4px">La huella digital es diferente. Este archivo fue modificado o no es el documento certificado.</div></div>';
+    }
+  } catch(e) {
+    resultado.innerHTML = '<div style="color:#c0392b;font-size:.85rem;text-align:center">Error al procesar el archivo. Intent&aacute; de nuevo.</div>';
+  }
+  input.value = "";
+}
+
+async function verificarCapa2() {
+  const dni = document.getElementById("inputDni").value.trim().replace(/\./g,"").replace(/ /g,"");
+  if (!dni) { mostrarError("errCapa2", "Ingresá tu DNI."); return; }
+  try {
+    const res = await fetch(API + "/api/verificar/" + certActual + "/privado", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({dni})
+    });
+    const data = await res.json();
+    if (!data.ok) { mostrarError("errCapa2", data.error || "DNI no encontrado en este trámite."); return; }
+    document.getElementById("errCapa2").style.display = "none";
+    document.getElementById("cardCapa2").style.display = "block";
+    const partesHtml = (data.partes || []).map(p => `
+      <div class="parte-item">
+        <div class="parte-nombre">${p.nombre} <span style="font-weight:400;color:#5a6b57">— ${p.rol}</span></div>
+        <div class="parte-datos">DNI: ${p.dni} · ${p.completado ? "✅ Firma completada" : "⏳ Pendiente"}</div>
+        ${p.firma_timestamp ? `<div class="parte-datos">Fecha de firma: ${formatFecha(p.firma_timestamp)}</div>` : ""}
+      </div>`).join("");
+    document.getElementById("capa2Content").innerHTML = `
+      <div class="success-box" style="margin-bottom:16px">
+        <div class="dato"><span class="dato-label">Solicitante</span><span class="dato-value">${data.solicitante_nombre}</span></div>
+        <div class="dato"><span class="dato-label">Tipo solicitante</span><span class="dato-value">${data.solicitante_tipo}</span></div>
+        <div class="dato"><span class="dato-label">Trámite</span><span class="dato-value">${data.tipo_tramite}</span></div>
+        ${data.documento_hash ? `
+        <div style="margin-top:12px;padding:10px;background:#f0f7f2;border-radius:6px">
+          <div style="font-size:.78rem;font-weight:700;color:#2d5a3d;margin-bottom:4px">&#128274; Huella digital del documento (SHA-256)</div>
+          <div class="hash" style="margin-bottom:6px">${data.documento_hash}</div>
+          <div style="font-size:.75rem;color:#5a6b57">C&oacute;digo &uacute;nico del archivo PDF. Si el documento fue alterado, este c&oacute;digo no va a coincidir con el original.</div>
+        </div>` : ""}
+      </div>
+      <div style="font-size:.82rem;font-weight:700;color:#374334;margin-bottom:8px">Intervinientes</div>
+      ${partesHtml}
+      <div class="legal" style="margin-top:16px">
+        Una vez que el solicitante confirme el trámite, el hash SHA-256 del documento queda anclado permanentemente en la blockchain de Núcleo NKL como prueba inalterable de su existencia. El anclaje en Bitcoin se activará próximamente.<br><br>
+        Núcleo CERT — nucleocert.com<br>
+        No reemplaza la escritura pública en los actos que la ley argentina exige dicha forma (art. 1017 CCCN).
+      </div>
+    `;
+  } catch(e) {
+    mostrarError("errCapa2", "Error de conexión. Intentá de nuevo.");
+  }
+}
+
+function mostrarError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.style.display = "block";
+}
+
+// Si viene con número en la URL
+const path = window.location.pathname;
+const match = path.match(/\/verificar\/(.+)/);
+if (match) {
+  document.getElementById("inputCert").value = match[1];
+  buscarCert();
+}
+</script>
+</body>
+</html>

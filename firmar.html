@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Firmar documento — Núcleo CERT</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f7f2;color:#111;min-height:100vh}
+nav{background:#fff;border-bottom:1px solid #e5e7eb;padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
+.nav-logo{font-weight:700;font-size:1rem;color:#111}
+.nav-logo span{color:#2d9b5a}
+.wrap{max-width:520px;margin:0 auto;padding:24px 16px 60px}
+.progress-bar{background:#e5e7eb;border-radius:99px;height:5px;margin-bottom:6px}
+.progress-fill{background:#2d9b5a;border-radius:99px;height:5px;transition:width .3s}
+.progress-label{font-size:.75rem;color:#5a6b57;margin-bottom:20px}
+.card{background:#fff;border-radius:14px;border:1px solid #e5e7eb;padding:28px 22px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+.eyebrow{font-size:.7rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#2d9b5a;margin-bottom:6px}
+.titulo{font-size:1.25rem;font-weight:700;margin-bottom:6px}
+.sub{font-size:.88rem;color:#5a6b57;margin-bottom:20px;line-height:1.6}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:.8rem;font-weight:600;color:#374334;margin-bottom:5px}
+.field input{width:100%;border:1.5px solid #d1d5db;border-radius:8px;padding:11px 14px;font-size:.92rem;font-family:inherit;color:#111}
+.field input:focus{outline:none;border-color:#2d9b5a}
+.field-hint{font-size:.73rem;color:#9aab97;margin-top:3px}
+.info-box{background:#f0f7f2;border:1px solid #d1fae5;border-radius:10px;padding:14px 16px;margin-bottom:20px;font-size:.83rem;color:#374334;line-height:1.6}
+.warning-box{background:#fef9c3;border:1px solid #fde68a;border-radius:10px;padding:14px 16px;margin-bottom:20px;font-size:.83rem;color:#78400a;line-height:1.6}
+.error-msg{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;font-size:.82rem;color:#991b1b;margin-bottom:14px;display:none}
+.success-msg{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;font-size:.82rem;color:#15803d;margin-bottom:14px}
+
+/* Cámara */
+.camara-wrap{position:relative;width:100%;border-radius:12px;overflow:hidden;background:#000;margin-bottom:14px}
+.camara-wrap video{width:100%;display:block;max-height:320px;object-fit:cover}
+.camara-overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.camara-marco{width:75%;aspect-ratio:1.58;border:2.5px solid rgba(45,155,90,.8);border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,.35)}
+.camara-marco.oval{border-radius:50%;aspect-ratio:1}
+.camara-marco.rect-tall{aspect-ratio:.75;width:55%}
+.foto-preview{width:100%;border-radius:12px;margin-bottom:14px;display:none}
+.canvas-hidden{display:none}
+
+/* Video grabación */
+.rec-dot{width:12px;height:12px;border-radius:50%;background:#e53e3e;animation:blink 1s infinite;display:inline-block;margin-right:6px}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.timer{font-size:1.4rem;font-weight:700;color:#2d9b5a;text-align:center;margin:8px 0}
+
+/* SMS */
+.sms-code{display:flex;gap:8px;justify-content:center;margin:16px 0}
+.sms-code input{width:44px;height:54px;border:1.5px solid #d1d5db;border-radius:8px;font-size:1.4rem;font-weight:700;text-align:center;font-family:inherit}
+.sms-code input:focus{outline:none;border-color:#2d9b5a}
+
+/* Botones */
+.btn-row{display:flex;gap:10px;margin-top:20px}
+.btn-primary{background:#2d9b5a;color:#fff;border:none;border-radius:8px;padding:13px 20px;font-size:.95rem;font-weight:600;cursor:pointer;flex:1;transition:background .15s}
+.btn-primary:hover{background:#1e7a43}
+.btn-primary:disabled{background:#c4cec1;cursor:not-allowed}
+.btn-secondary{background:#fff;color:#374334;border:1.5px solid #d1d5db;border-radius:8px;padding:13px 16px;font-size:.92rem;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-outline{background:transparent;color:#2d9b5a;border:1.5px solid #2d9b5a;border-radius:8px;padding:10px 16px;font-size:.85rem;font-weight:600;cursor:pointer;width:100%;margin-bottom:10px}
+
+/* Éxito final */
+.check-circle{width:72px;height:72px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto 16px}
+.cert-chip{background:#f0f7f2;border:1.5px solid #2d9b5a;border-radius:8px;padding:12px 16px;text-align:center;margin:16px 0;font-size:.82rem;color:#5a6b57}
+.cert-chip strong{display:block;font-size:1rem;color:#2d9b5a;font-weight:800;margin-top:2px}
+
+/* Disclaimer */
+.disclaimer{font-size:.73rem;color:#9aab97;line-height:1.6;margin-top:16px;text-align:center}
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-logo">Núcleo <span>CERT</span></span>
+  <span style="font-size:.75rem;color:#5a6b57">Proceso seguro 🔒</span>
+</nav>
+
+<div class="wrap">
+  <div class="progress-bar"><div class="progress-fill" id="pFill" style="width:14%"></div></div>
+  <div class="progress-label" id="pLabel">Paso 1 de 7</div>
+  <div class="card" id="mainCard"></div>
+</div>
+
+<canvas class="canvas-hidden" id="canvas"></canvas>
+
+<script>
+const UUID = window.location.pathname.split('/firmar/')[1];
+const API = '/api';
+
+const state = {
+  step: 1,
+  parte: null,
+  tramite: null,
+  // Datos capturados
+  dni_numero: '',
+  nombre_completo: '',
+  dni_frente_b64: '',
+  dni_dorso_b64: '',
+  selfie_b64: '',
+  video_blob: null,
+  video_b64: '',
+  sms_codigo: '',
+  telefono: '',
+  // Cámara
+  stream: null,
+  mediaRecorder: null,
+  videoChunks: [],
+  grabando: false,
+  timerInterval: null,
+  segundos: 0
+};
+
+async function init() {
+  document.getElementById('mainCard').innerHTML = '<div style="text-align:center;padding:40px 0;color:#5a6b57">Cargando...</div>';
+  try {
+    const res = await fetch(`${API}/firmar/${UUID}`);
+    const data = await res.json();
+    if (!data.ok) {
+      document.getElementById('mainCard').innerHTML = `<div class="warning-box">⚠️ ${data.error || 'Link no válido o ya utilizado.'}</div>`;
+      return;
+    }
+    state.parte = data.parte;
+    state.tramite = data.tramite;
+    render();
+  } catch(e) {
+    document.getElementById('mainCard').innerHTML = '<div class="warning-box">⚠️ Error de conexión. Verificá tu internet e intentá de nuevo.</div>';
+  }
+}
+
+function render() {
+  const pct = (state.step / 7) * 100;
+  document.getElementById('pFill').style.width = pct + '%';
+  document.getElementById('pLabel').textContent = `Paso ${state.step} de 7`;
+  stopCamera();
+  const card = document.getElementById('mainCard');
+  switch(state.step) {
+    case 1: card.innerHTML = renderBienvenida(); break;
+    case 2: card.innerHTML = renderDNIDatos(); break;
+    case 3: card.innerHTML = renderDNIFotos(); break;
+    case 4: card.innerHTML = renderSelfie(); break;
+    case 5: card.innerHTML = renderVideo(); break;
+    case 6: card.innerHTML = renderSMS(); break;
+    case 7: card.innerHTML = renderFinal(); break;
+  }
+}
+
+function next() { state.step++; render(); window.scrollTo(0,0); }
+function prev() { state.step--; render(); window.scrollTo(0,0); }
+
+// ── PASO 1: BIENVENIDA ──
+function renderBienvenida() {
+  const t = state.tramite;
+  const p = state.parte;
+  return `
+    <div class="eyebrow">Invitación a firmar</div>
+    <div class="titulo">Hola, te invitan a firmar</div>
+    <div class="info-box">
+      <strong>${t.tipo_tramite}</strong><br>
+      Solicitante: ${t.solicitante_nombre}<br>
+      Tu rol: <strong>${p.rol}</strong>
+    </div>
+    <div class="sub">Para completar tu firma necesitás:</div>
+    <ul style="font-size:.85rem;color:#374334;line-height:2.2;padding-left:4px;list-style:none;margin-bottom:16px">
+      <li>📄 Tu DNI físico (frente y dorso)</li>
+      <li>📱 Cámara del celular habilitada</li>
+      <li>📞 Acceso a tu número de teléfono</li>
+      <li>⏱ Aproximadamente 3 minutos</li>
+    </ul>
+    <div class="warning-box">⚠️ Este link es personal e intransferible. Solo vos podés completar esta firma.</div>
+    <div class="btn-row"><button class="btn-primary" onclick="next()">Comenzar →</button></div>
+    <div class="disclaimer">Núcleo CERT — Certificación privada de fecha cierta e identidad de firmantes.</div>`;
+}
+
+// ── PASO 2: DATOS DNI ──
+function renderDNIDatos() {
+  return `
+    <div class="eyebrow">Capa 1 — Identidad</div>
+    <div class="titulo">Datos de tu DNI</div>
+    <div class="sub">Ingresá los datos tal como figuran en tu DNI.</div>
+    <div class="field"><label>Nombre completo</label><input id="dni_nombre" type="text" value="${state.nombre_completo}" placeholder="Como figura en el DNI" autocomplete="name"></div>
+    <div class="field"><label>Número de DNI</label><input id="dni_num" type="text" value="${state.dni_numero}" placeholder="Sin puntos ni espacios" inputmode="numeric"></div>
+    <div class="field"><label>Teléfono celular</label><input id="tel" type="tel" value="${state.telefono}" placeholder="11 1234-5678 (para SMS)"><div class="field-hint">Se enviará un código de verificación</div></div>
+    <div class="error-msg" id="errDni">Completá todos los campos.</div>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="prev()">← Atrás</button>
+      <button class="btn-primary" onclick="validarDniDatos()">Continuar →</button>
+    </div>`;
+}
+
+async function validarDniDatos() {
+  const nombre = document.getElementById('dni_nombre').value.trim();
+  const num = document.getElementById('dni_num').value.trim();
+  const tel = document.getElementById('tel').value.trim();
+  if (!nombre || !num || !tel) { document.getElementById('errDni').style.display='block'; return; }
+  state.nombre_completo = nombre;
+  state.dni_numero = num;
+  // Validar DNI contra el registrado antes de continuar
+  try {
+    const res = await fetch(`${API}/firmar/${UUID}/validar-dni`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({dni_numero: num})
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      document.getElementById('errDni').textContent = data.error || 'El DNI no coincide con el registrado para este trámite.';
+      document.getElementById('errDni').style.display = 'block';
+      return;
+    }
+  } catch(e) {}
+  state.telefono = tel;
+  next();
+}
+
+// ── PASO 3: FOTOS DNI ──
+function renderDNIFotos() {
+  return `
+    <div class="eyebrow">Capa 1 — Identidad</div>
+    <div class="titulo">Foto de tu DNI</div>
+    <div class="sub">Sacá una foto clara del frente y dorso de tu DNI.</div>
+
+    ${state.dni_frente_b64 ? `<div class="success-msg">✓ Frente del DNI capturado</div>` : ''}
+    ${!state.dni_frente_b64 ? `
+    <button class="btn-outline" onclick="iniciarCamaraDNI('frente')">📷 Fotografiar frente del DNI</button>` : ''}
+
+    ${state.dni_frente_b64 && !state.dni_dorso_b64 ? `
+    <button class="btn-outline" onclick="iniciarCamaraDNI('dorso')">📷 Fotografiar dorso del DNI</button>` : ''}
+    ${state.dni_dorso_b64 ? `<div class="success-msg">✓ Dorso del DNI capturado</div>` : ''}
+
+    <div id="camaraContainer" style="display:none">
+      <div class="camara-wrap">
+        <video id="video" autoplay playsinline></video>
+        <div class="camara-overlay"><div class="camara-marco"></div></div>
+      </div>
+      <button class="btn-primary" onclick="capturarFoto()" style="margin-bottom:10px">📸 Capturar</button>
+      <button class="btn-outline" onclick="stopCamera();document.getElementById('camaraContainer').style.display='none'">Cancelar</button>
+    </div>
+    <canvas class="canvas-hidden" id="canvasDni"></canvas>
+    <img id="previewDni" class="foto-preview">
+
+    <div class="error-msg" id="errFotos">Necesitás fotografiar el frente y dorso del DNI.</div>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="prev()">← Atrás</button>
+      <button class="btn-primary" onclick="validarFotos()" ${!state.dni_frente_b64||!state.dni_dorso_b64?'disabled':''}>Continuar →</button>
+    </div>`;
+}
+
+let fotoActual = '';
+async function iniciarCamaraDNI(lado) {
+  fotoActual = lado;
+  document.getElementById('camaraContainer').style.display = 'block';
+  try {
+    try {
+      state.stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{exact:'environment'}},audio:false});
+    } catch(e) {
+      state.stream = await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+    }
+    document.getElementById('video').srcObject = state.stream;
+  } catch(e) {
+    alert('No se pudo acceder a la cámara. Verificá los permisos.');
+  }
+}
+
+function capturarFoto() {
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvasDni');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  const b64 = canvas.toDataURL('image/jpeg', 0.85);
+  if (fotoActual === 'frente') state.dni_frente_b64 = b64;
+  else state.dni_dorso_b64 = b64;
+  stopCamera();
+  render();
+}
+
+function validarFotos() {
+  if (!state.dni_frente_b64 || !state.dni_dorso_b64) {
+    document.getElementById('errFotos').style.display = 'block'; return;
+  }
+  next();
+}
+
+// ── PASO 4: SELFIE ──
+function renderSelfie() {
+  return `
+    <div class="eyebrow">Capa 1 — Identidad</div>
+    <div class="titulo">Selfie con tu DNI</div>
+    <div class="sub">Sostené el DNI junto a tu cara y sacate una selfie. Tienen que verse tu cara y el DNI claramente.</div>
+
+    ${state.selfie_b64 ? `<img src="${state.selfie_b64}" style="width:100%;border-radius:12px;margin-bottom:14px"><div class="success-msg">✓ Selfie capturada</div>` : `
+    <div id="camaraSelfieContainer">
+      <div class="camara-wrap">
+        <video id="videoSelfie" autoplay playsinline></video>
+        <div class="camara-overlay"><div class="camara-marco oval"></div></div>
+      </div>
+      <button class="btn-primary" onclick="capturarSelfie()" style="margin-bottom:10px">📸 Capturar selfie</button>
+    </div>`}
+    <canvas class="canvas-hidden" id="canvasSelfie"></canvas>
+    ${state.selfie_b64 ? `<button class="btn-outline" onclick="state.selfie_b64='';render()">Repetir selfie</button>` : ''}
+
+    <div class="error-msg" id="errSelfie">Necesitás capturar la selfie con el DNI.</div>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="prev()">← Atrás</button>
+      <button class="btn-primary" onclick="validarSelfie()" ${!state.selfie_b64?'disabled':''}>Continuar →</button>
+    </div>`;
+}
+
+async function initSelfieCamera() {
+  try {
+    try {
+      state.stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{exact:'user'}},audio:false});
+    } catch(e) {
+      state.stream = await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+    }
+    const v = document.getElementById('videoSelfie');
+    if (v) v.srcObject = state.stream;
+  } catch(e) { alert('No se pudo acceder a la cámara frontal.'); }
+}
+
+function capturarSelfie() {
+  const video = document.getElementById('videoSelfie');
+  const canvas = document.getElementById('canvasSelfie');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  state.selfie_b64 = canvas.toDataURL('image/jpeg', 0.85);
+  stopCamera();
+  render();
+}
+
+function validarSelfie() {
+  if (!state.selfie_b64) { document.getElementById('errSelfie').style.display='block'; return; }
+  next();
+}
+
+// ── PASO 5: VIDEO PRUEBA DE VIDA ──
+function renderVideo() {
+  return `
+    <div class="eyebrow">Capa 2 — Prueba de vida</div>
+    <div class="titulo">Video de 5 segundos</div>
+    <div class="sub">Mirá a la cámara, parpadeá dos veces y girá la cabeza lentamente. Asegurate de tener buena iluminación.</div>
+
+    ${state.video_b64 ? `
+    <div class="success-msg">✓ Video de prueba de vida grabado correctamente</div>
+    <button class="btn-outline" onclick="state.video_b64='';state.video_blob=null;render()">Repetir video</button>` : `
+    <div id="videoContainer">
+      <div class="camara-wrap">
+        <video id="videoLive" autoplay playsinline muted></video>
+      </div>
+      <div id="instruccionVida" style="display:none;background:#f0fdf4;border-radius:10px;padding:12px;margin-bottom:10px;text-align:center;font-weight:700;font-size:1.1rem;color:#15803d"></div>
+      <div class="timer" id="timerDisplay" style="display:none"><span class="rec-dot"></span><span id="timerSeg">5</span>s</div>
+      <button class="btn-primary" id="btnGrabar" onclick="iniciarGrabacion()">🔴 Iniciar grabación</button>
+    </div>`}
+
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="prev()">← Atrás</button>
+      <button class="btn-primary" onclick="validarVideo()" ${!state.video_b64?'disabled':''}>Continuar →</button>
+    </div>`;
+}
+
+async function iniciarCamaraVideo() {
+  try {
+    try {
+      state.stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{exact:'user'}},audio:false});
+    } catch(e) {
+      state.stream = await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+    }
+    const v = document.getElementById('videoLive');
+    if (v) v.srcObject = state.stream;
+  } catch(e) { alert('No se pudo acceder a la cámara.'); }
+}
+
+async function iniciarGrabacion() {
+  if (!state.stream) {
+    await iniciarCamaraVideo();
+    await new Promise(r => setTimeout(r, 500));
+  }
+  document.getElementById('btnGrabar').disabled = true;
+  document.getElementById('timerDisplay').style.display = 'block';
+  state.videoChunks = [];
+  state.mediaRecorder = new MediaRecorder(state.stream);
+  state.mediaRecorder.ondataavailable = e => state.videoChunks.push(e.data);
+  state.mediaRecorder.onstop = () => {
+    state.video_blob = new Blob(state.videoChunks, {type:'video/webm'});
+    const reader = new FileReader();
+    reader.onload = () => { state.video_b64 = reader.result; render(); };
+    reader.readAsDataURL(state.video_blob);
+  };
+  state.mediaRecorder.start();
+  state.segundos = 5;
+  document.getElementById('timerSeg').textContent = state.segundos;
+  const instrucciones = ['👀 Mirá a la cámara', '😑 Parpadeá dos veces', '↩️ Girá la cabeza a la derecha', '↪️ Girá la cabeza a la izquierda', '✅ ¡Listo!'];
+  const divInst = document.getElementById('instruccionVida');
+  if (divInst) { divInst.style.display='block'; divInst.textContent = instrucciones[0]; }
+  state.timerInterval = setInterval(() => {
+    state.segundos--;
+    const el = document.getElementById('timerSeg');
+    if (el) el.textContent = state.segundos;
+    const idx = 5 - state.segundos;
+    if (divInst && instrucciones[idx]) divInst.textContent = instrucciones[idx];
+    if (state.segundos <= 0) {
+      clearInterval(state.timerInterval);
+      if (divInst) divInst.style.display='none';
+      state.mediaRecorder.stop();
+    }
+  }, 1000);
+}
+
+function validarVideo() {
+  if (!state.video_b64) return;
+  next();
+}
+
+// ── PASO 6: SMS ──
+function renderSMS() {
+  return `
+    <div class="eyebrow">Verificación SMS</div>
+    <div class="titulo">Código de verificación</div>
+    <div class="sub">Enviamos un código de 6 dígitos al número <strong>${state.telefono}</strong>.</div>
+
+    <div class="sms-code">
+      ${[0,1,2,3,4,5].map(i=>`<input type="text" maxlength="1" inputmode="numeric" id="sms${i}" oninput="moveSMS(${i})" onkeydown="backSMS(event,${i})">`).join('')}
+    </div>
+
+    <button class="btn-outline" onclick="enviarSMS()" id="btnReenviar">Reenviar código</button>
+    <div class="error-msg" id="errSMS">Código incorrecto. Intentá de nuevo.</div>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="prev()">← Atrás</button>
+      <button class="btn-primary" onclick="verificarSMS()">Verificar y firmar →</button>
+    </div>`;
+}
+
+function moveSMS(i) {
+  const val = document.getElementById(`sms${i}`).value;
+  if (val && i < 5) document.getElementById(`sms${i+1}`).focus();
+}
+function backSMS(e, i) {
+  if (e.key === 'Backspace' && !document.getElementById(`sms${i}`).value && i > 0)
+    document.getElementById(`sms${i-1}`).focus();
+}
+
+async function enviarSMS() {
+  try {
+    await fetch(`${API}/firmar/${UUID}/enviar-sms`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefono:state.telefono})});
+    document.getElementById('btnReenviar').textContent = 'Código enviado ✓';
+    setTimeout(()=>{ const b=document.getElementById('btnReenviar'); if(b) b.textContent='Reenviar código'; },30000);
+  } catch(e) {}
+}
+
+async function verificarSMS() {
+  const codigo = [0,1,2,3,4,5].map(i=>document.getElementById(`sms${i}`).value).join('');
+  if (codigo.length < 6) { document.getElementById('errSMS').style.display='block'; return; }
+  state.sms_codigo = codigo;
+
+  const btn = document.querySelector('.btn-primary');
+  btn.disabled = true;
+  btn.textContent = 'Procesando...';
+
+  try {
+    const res = await fetch(`${API}/firmar/${UUID}/completar`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        nombre_completo: state.nombre_completo,
+        dni_numero: state.dni_numero,
+        telefono: state.telefono,
+        dni_frente: state.dni_frente_b64,
+        dni_dorso: state.dni_dorso_b64,
+        selfie: state.selfie_b64,
+        video: state.video_b64,
+        sms_codigo: state.sms_codigo
+      })
+    });
+    const data = await res.json();
+    if (data.ok) { next(); }
+    else {
+      document.getElementById('errSMS').textContent = data.error || 'Error al completar la firma.';
+      document.getElementById('errSMS').style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Verificar y firmar →';
+    }
+  } catch(e) {
+    document.getElementById('errSMS').textContent = 'Error de conexión.';
+    document.getElementById('errSMS').style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Verificar y firmar →';
+  }
+}
+
+// ── PASO 7: FINAL ──
+function renderFinal() {
+  return `
+    <div style="text-align:center;padding:8px 0 12px">
+      <div class="check-circle">✓</div>
+      <div class="titulo">¡Firma completada!</div>
+      <div class="sub" style="margin-top:8px">Tu identidad fue verificada y tu firma quedó registrada de forma permanente.</div>
+    </div>
+    <div class="cert-chip">
+      Certificado<strong>${state.tramite?.numero_cert || ''}</strong>
+    </div>
+    <div class="info-box">
+      <strong>¿Qué pasó con tu firma?</strong><br>
+      Tu identidad (DNI, selfie y video) quedó vinculada al documento. Cuando todos los firmantes completen el proceso, el hash SHA-256 del documento se ancla en la blockchain de NKL y Bitcoin como prueba permanente e inalterable.
+    </div>
+    <div class="disclaimer">
+      Núcleo CERT es un servicio de certificación privada de fecha cierta e identidad de firmantes. No reemplaza la escritura pública en los actos que la ley argentina exige dicha forma (art. 1017 CCCN).
+    </div>`;
+}
+
+function stopCamera() {
+  if (state.stream) {
+    state.stream.getTracks().forEach(t => t.stop());
+    state.stream = null;
+  }
+  if (state.timerInterval) {
+    clearInterval(state.timerInterval);
+    state.timerInterval = null;
+  }
+}
+
+// Iniciar cámara según paso
+const origRender = render;
+window.render = function() {
+  origRender();
+  if (state.step === 4 && !state.selfie_b64) setTimeout(initSelfieCamera, 100);
+  if (state.step === 5 && !state.video_b64) setTimeout(iniciarCamaraVideo, 100);
+  if (state.step === 6) setTimeout(enviarSMS, 300);
+};
+
+init();
+</script>
+</body>
+</html>
