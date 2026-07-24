@@ -487,9 +487,8 @@ function renderExito() {
     ${r.monto_total === 0 ? '<div style="background:#dcfce7;border-radius:8px;padding:12px;text-align:center;font-size:.85rem;color:#15803d;font-weight:600;margin-bottom:16px">✓ Gratuito — Licencia Núcleo activa</div>' : `
     <div style="background:#fef9c3;border-radius:8px;padding:16px;margin-bottom:16px;text-align:center">
       <div style="font-size:.82rem;color:#78400a;margin-bottom:12px">Para activar las firmas, completá el pago:</div>
-      <button class="btn-primary" style="max-width:280px;margin:0 auto;display:block" onclick="alert('Integración con Mercado Pago próximamente')">Pagar $${r.monto_total.toLocaleString('es-AR')} ARS con Mercado Pago</button>
+      <button class="btn-primary" id="btnPagarMP" style="max-width:280px;margin:0 auto;display:block" onclick="pagarConMercadoPago(this, '${r.numero_cert}')">Pagar $${r.monto_total.toLocaleString('es-AR')} ARS con Mercado Pago</button>
       <div style="font-size:.75rem;color:#9aab97;margin-top:8px">Los links de firma se enviarán automáticamente al confirmar el pago</div>
-      <button class="btn-secondary" style="max-width:280px;margin:8px auto 0;display:block" id="btnModoPrueba" data-cert="${r.numero_cert}" onclick="enviarEmailsSinPago(this.dataset.cert)">🧪 Modo prueba — Enviar sin pago</button>
     </div>`}
     ${r.partes && r.partes.length > 0 ? `
     <div>
@@ -711,6 +710,7 @@ async function confirmar() {
     solicitante_telefono: state.solicitante_telefono,
     licencia_nkl: state.licencia_nkl ? 1 : 0,
     minero_username: state.minero_username,
+    minero_key: state.minero_key,
     modo: state.modo,
     documento_hash: state.documento_hash,
     documento_archivo: state.documento_archivo,
@@ -742,15 +742,80 @@ async function confirmar() {
   }
 }
 
-async function enviarEmailsSinPago(cert) {
+async function pagarConMercadoPago(btn, cert) {
+  const textoOriginal = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Redirigiendo a Mercado Pago...';
   try {
-    const res = await fetch(`${API}/tramites/${cert}/enviar-emails`, {method:"POST", headers:{"Content-Type":"application/json"}});
+    const res = await fetch(`${API}/tramites/${cert}/crear-preferencia`, {method: "POST"});
     const data = await res.json();
-    if (data.ok) alert("Emails enviados correctamente.");
-    else alert("Error: " + (data.error || "desconocido"));
-  } catch(e) { alert("Error de conexión."); }
+    if (!data.ok) {
+      alert(data.error || 'No se pudo iniciar el pago. Intentá de nuevo.');
+      btn.disabled = false;
+      btn.textContent = textoOriginal;
+      return;
+    }
+    window.location.href = data.init_point;
+  } catch (e) {
+    alert('Error de conexión. Intentá de nuevo.');
+    btn.disabled = false;
+    btn.textContent = textoOriginal;
+  }
 }
-render();
+
+function checkRetornoPago() {
+  const params = new URLSearchParams(window.location.search);
+  const pago = params.get('pago');
+  const cert = params.get('cert');
+  if (!pago || !cert) return false;
+  const card = document.getElementById('wizardCard');
+  const progressFill = document.getElementById('progressFill');
+  const progressLabel = document.getElementById('progressLabel');
+  if (progressFill) progressFill.style.width = '100%';
+  if (progressLabel) progressLabel.textContent = 'Pago';
+  let html = '';
+  if (pago === 'exitoso') {
+    html = `
+      <div style="text-align:center;padding:8px 0 16px">
+        <div class="success-icon">✓</div>
+        <div class="step-title">¡Pago confirmado!</div>
+        <div class="step-sub">Los links de firma fueron enviados por email a cada parte.</div>
+      </div>
+      <div class="cert-number">
+        <div class="cert-number-label">Número de certificado</div>
+        <div class="cert-number-value">${cert}</div>
+      </div>
+      <div class="disclaimer" style="margin-top:20px">
+        Podés revisar el estado del trámite y descargar la hoja de certificación desde "Mis certificados" con tu DNI.
+      </div>
+      <div class="btn-row" style="margin-top:20px">
+        <a href="/mis-certificados.html" style="flex:1"><button class="btn-primary" style="width:100%">Ver mis certificados</button></a>
+        <a href="/" style="flex:1"><button class="btn-secondary" style="width:100%">Volver al inicio</button></a>
+      </div>`;
+  } else if (pago === 'pendiente') {
+    html = `
+      <div style="text-align:center;padding:8px 0 16px">
+        <div class="step-title">Pago pendiente</div>
+        <div class="step-sub">Tu pago para el certificado <b>${cert}</b> está siendo procesado. Te avisaremos por email cuando se confirme.</div>
+      </div>
+      <div class="btn-row" style="margin-top:20px">
+        <a href="/" style="flex:1"><button class="btn-secondary" style="width:100%">Volver al inicio</button></a>
+      </div>`;
+  } else {
+    html = `
+      <div style="text-align:center;padding:8px 0 16px">
+        <div class="step-title">El pago no se completó</div>
+        <div class="step-sub">No se pudo procesar el pago para el certificado <b>${cert}</b>. Podés reintentarlo desde "Mis certificados".</div>
+      </div>
+      <div class="btn-row" style="margin-top:20px">
+        <a href="/mis-certificados.html" style="flex:1"><button class="btn-primary" style="width:100%">Reintentar pago</button></a>
+        <a href="/" style="flex:1"><button class="btn-secondary" style="width:100%">Volver al inicio</button></a>
+      </div>`;
+  }
+  card.innerHTML = html;
+  return true;
+}
+if (!checkRetornoPago()) { render(); }
 </script>
 </body>
 </html>
