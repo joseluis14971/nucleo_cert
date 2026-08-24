@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestionar trámite — Núcleo CERT</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: #f4f7f4; color: #2d3d2d; min-height: 100vh; }
+
+  .topbar {
+    background: #1a2e1a;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .topbar .logo { color: #fff; font-size: 1.1rem; font-weight: bold; text-decoration: none; }
+  .topbar .logo span { color: #4caf7d; }
+
+  .container { max-width: 700px; margin: 40px auto; padding: 0 16px; }
+
+  .titulo { text-align: center; margin-bottom: 24px; }
+  .titulo h1 { font-size: 1.5rem; color: #1a2e1a; margin-bottom: 6px; }
+  .titulo p { color: #5a6b57; font-size: .9rem; }
+
+  .tramite-info {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    margin-bottom: 24px;
+  }
+  .tramite-numero { font-weight: bold; font-size: 1.1rem; color: #1a2e1a; margin-bottom: 4px; }
+  .tramite-meta { font-size: .85rem; color: #5a6b57; }
+  .tramite-meta span { margin-right: 14px; }
+
+  .aviso-info {
+    background: #f0f7f2;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: .85rem;
+    color: #5a6b57;
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+
+  .parte-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.07);
+    margin-bottom: 16px;
+    border-left: 4px solid #e6a817;
+  }
+  .parte-card.firmado { border-left-color: #2d9b5a; }
+
+  .parte-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .parte-rol {
+    display: inline-block;
+    background: #f0f7f2;
+    color: #2d7a4a;
+    font-size: .8rem;
+    padding: 3px 10px;
+    border-radius: 12px;
+  }
+  .parte-estado {
+    font-size: .78rem;
+    font-weight: bold;
+    padding: 4px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+  }
+  .estado-firmado { background: #e8f5ee; color: #2d9b5a; }
+  .estado-pendiente { background: #fef3dc; color: #b8860b; }
+
+  .parte-field { margin-bottom: 12px; }
+  .parte-field label { display: block; font-size: .8rem; font-weight: bold; color: #5a6b57; margin-bottom: 4px; }
+  .parte-field input {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid #c8d8c4;
+    border-radius: 8px;
+    font-size: .95rem;
+    outline: none;
+  }
+  .parte-field input:focus { border-color: #2d9b5a; }
+  .parte-field input:disabled { background: #f4f7f4; color: #7a8b77; border-color: #e5e7eb; }
+
+  .btn-guardar {
+    padding: 9px 20px;
+    background: #2d9b5a;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: .9rem;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+  .btn-guardar:hover { background: #237a47; }
+  .btn-guardar:disabled { background: #aaa; cursor: not-allowed; }
+
+  .link-copiar {
+    background: #f9faf9;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-top: 12px;
+    font-size: .8rem;
+  }
+  .link-copiar .label { color: #5a6b57; font-weight: 600; margin-bottom: 4px; }
+  .link-copiar .url { color: #2d9b5a; word-break: break-all; }
+
+  .msg-ok { color: #2d9b5a; font-size: .82rem; margin-top: 8px; display: none; }
+  .msg-error { color: #c0392b; font-size: .82rem; margin-top: 8px; display: none; }
+
+  .loading { text-align: center; padding: 40px; color: #5a6b57; }
+  .error-carga { text-align: center; padding: 40px; background: #fff; border-radius: 12px; display: none; }
+  .error-carga p { color: #c0392b; font-size: .95rem; }
+
+  footer { text-align: center; padding: 32px 16px; color: #9aab97; font-size: .8rem; margin-top: 40px; }
+  footer a { color: #2d9b5a; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="logo" href="https://nucleocert.com">Núcleo <span>CERT</span></a>
+</div>
+
+<div class="container">
+
+  <div class="loading" id="loading">Cargando trámite...</div>
+
+  <div class="error-carga" id="errorCarga">
+    <p>No pudimos encontrar este trámite. Verificá que el link esté completo.</p>
+  </div>
+
+  <div id="contenido" style="display:none">
+
+    <div class="titulo">
+      <h1>Gestionar trámite</h1>
+      <p>Revisá el estado de cada firmante y corregí los datos si hace falta.</p>
+    </div>
+
+    <div class="tramite-info">
+      <div class="tramite-numero" id="tramiteNumero"></div>
+      <div class="tramite-meta" id="tramiteMeta"></div>
+    </div>
+
+    <div class="aviso-info">
+      Podés corregir nombre, DNI o email de cualquier parte que <strong>todavía no haya firmado</strong>. Una vez que alguien firma, sus datos quedan protegidos y no se pueden modificar — es lo que garantiza la validez de la certificación.
+    </div>
+
+    <div id="listaPartes"></div>
+
+  </div>
+
+</div>
+
+<footer>
+  <a href="https://nucleocert.com">nucleocert.com</a> &nbsp;·&nbsp;
+  <a href="https://nucleolaboratorios.com">nucleolaboratorios.com</a> &nbsp;·&nbsp; Argentina
+</footer>
+
+<script>
+  const GESTION_UUID = window.location.pathname.split('/gestionar/')[1];
+  const API = "/api";
+
+  async function cargar() {
+    if (!GESTION_UUID) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('errorCarga').style.display = 'block';
+      return;
+    }
+    try {
+      const res = await fetch(`${API}/gestion/${GESTION_UUID}`);
+      const data = await res.json();
+      document.getElementById('loading').style.display = 'none';
+      if (!data.ok) {
+        document.getElementById('errorCarga').style.display = 'block';
+        return;
+      }
+      render(data);
+    } catch (e) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('errorCarga').style.display = 'block';
+    }
+  }
+
+  function render(data) {
+    document.getElementById('tramiteNumero').textContent = data.numero_cert;
+    document.getElementById('tramiteMeta').innerHTML = `
+      <span>📁 ${data.categoria}</span>
+      <span>📄 ${data.tipo_tramite}</span>
+      <span>👤 ${data.solicitante_nombre}</span>
+    `;
+
+    const lista = document.getElementById('listaPartes');
+    lista.innerHTML = '';
+
+    data.partes.forEach((p, i) => {
+      const div = document.createElement('div');
+      div.className = `parte-card ${p.firmado ? 'firmado' : ''}`;
+
+      const linkFirma = `https://nucleocert.com/firmar/${p.link_uuid}`;
+
+      div.innerHTML = `
+        <div class="parte-top">
+          <span class="parte-rol">${p.rol}</span>
+          <span class="parte-estado ${p.firmado ? 'estado-firmado' : 'estado-pendiente'}">
+            ${p.firmado ? '✅ Firmado' : '⏳ Pendiente'}
+          </span>
+        </div>
+        <div class="parte-field">
+          <label>Nombre completo</label>
+          <input type="text" id="nombre-${i}" value="${p.nombre || ''}" ${p.firmado ? 'disabled' : ''}>
+        </div>
+        <div class="parte-field">
+          <label>DNI</label>
+          <input type="text" id="dni-${i}" value="${p.dni || ''}" ${p.firmado ? 'disabled' : ''}>
+        </div>
+        <div class="parte-field">
+          <label>Email</label>
+          <input type="email" id="email-${i}" value="${p.email || ''}" ${p.firmado ? 'disabled' : ''}>
+        </div>
+        ${p.firmado ? '' : `
+          <button class="btn-guardar" onclick="guardar(${i}, '${p.link_uuid}')">Guardar cambios</button>
+          <div class="msg-ok" id="msgOk-${i}">✓ Datos actualizados correctamente</div>
+          <div class="msg-error" id="msgError-${i}"></div>
+        `}
+        <div class="link-copiar">
+          <div class="label">${p.firmado ? 'Link que usó para firmar:' : 'Copiá este link y pegalo en WhatsApp para ' + (p.nombre || 'esta persona') + ':'}</div>
+          <div class="url">${linkFirma}</div>
+        </div>
+      `;
+      lista.appendChild(div);
+    });
+
+    document.getElementById('contenido').style.display = 'block';
+  }
+
+  async function guardar(i, linkUuid) {
+    const btn = event.target;
+    const msgOk = document.getElementById(`msgOk-${i}`);
+    const msgError = document.getElementById(`msgError-${i}`);
+    msgOk.style.display = 'none';
+    msgError.style.display = 'none';
+
+    const nombre = document.getElementById(`nombre-${i}`).value.trim();
+    const dni = document.getElementById(`dni-${i}`).value.trim();
+    const email = document.getElementById(`email-${i}`).value.trim();
+
+    if (!nombre || !dni) {
+      msgError.textContent = 'Nombre y DNI son obligatorios.';
+      msgError.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+
+    try {
+      const res = await fetch(`${API}/gestion/${GESTION_UUID}/editar-parte`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link_uuid: linkUuid, nombre, dni, email })
+      });
+      const data = await res.json();
+
+      if (data.ok) {
+        msgOk.style.display = 'block';
+      } else {
+        msgError.textContent = data.error || 'No se pudo guardar. Intentá de nuevo.';
+        msgError.style.display = 'block';
+        // Si el error es porque ya firmo mientras editabas, recargamos todo
+        // para reflejar el estado real
+        if (data.error && data.error.includes('ya firmó')) {
+          setTimeout(cargar, 1500);
+        }
+      }
+    } catch (e) {
+      msgError.textContent = 'Error de conexión. Intentá de nuevo.';
+      msgError.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Guardar cambios';
+    }
+  }
+
+  cargar();
+</script>
+
+</body>
+</html>

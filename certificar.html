@@ -495,20 +495,54 @@ function renderExito() {
     <div>
       <div style="font-size:.8rem;font-weight:600;color:#5a6b57;margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">Links de firma</div>
       <div class="links-list">
-        ${r.partes.map(p=>`
+        ${r.partes.map((p,i)=>{
+          const nombreFirmante = p.nombre || 'el firmante';
+          const mensajeWa = encodeURIComponent('Hola! Te comparto el link para firmar el trámite de Núcleo CERT: ' + p.link);
+          return `
           <div class="link-item">
             <div class="link-item-rol">${p.rol} — ${p.nombre||'Sin nombre'} ${p.email?'<span style="color:#9aab97;font-weight:400">· '+p.email+'</span>':''}</div>
             <div class="link-item-url">${p.link}</div>
-          </div>`).join("")}
+            <div style="margin-top:10px;padding:10px 12px;background:#fff8e1;border-radius:6px;font-size:.8rem;color:#7a5c00;font-weight:600">
+              📲 Compartí el link con el firmante ${nombreFirmante}
+            </div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <a href="https://wa.me/?text=${mensajeWa}" target="_blank" style="flex:1;text-decoration:none">
+                <button class="btn-primary" style="width:100%;background:#25D366;font-size:.85rem;padding:10px 8px" type="button">💬 Enviar por WhatsApp</button>
+              </a>
+              <button class="btn-secondary" style="flex:1;font-size:.85rem;padding:10px 8px" type="button" onclick="copiarLink('${p.link}', this)">📋 Copiar link</button>
+            </div>
+          </div>`;
+        }).join("")}
       </div>
     </div>` : ""}
     <div class="disclaimer" style="margin-top:20px">
       Núcleo CERT es un servicio de certificación privada de fecha cierta e identidad de firmantes. No reemplaza la escritura pública en los actos que la ley argentina exige dicha forma (art. 1017 CCCN).
     </div>
-    <div class="btn-row" style="margin-top:20px">
+    <div style="background:#f0f7f2;border-radius:8px;padding:12px;margin-top:20px;font-size:.8rem;color:#5a6b57;text-align:center">
+      ¿Cargaste mal un nombre o un DNI? Podés corregirlo y volver a confirmar — se generará un trámite nuevo con los datos corregidos.
+    </div>
+    <div class="btn-row" style="margin-top:12px">
       <a href="/" style="flex:1"><button class="btn-secondary" style="width:100%">← Volver al inicio</button></a>
-      <button class="btn-primary" onclick="imprimirResumen()">🖨 Imprimir resumen</button>
+      <button class="btn-primary" onclick="volverACorregir()">✏️ Corregir datos</button>
     </div>`;
+}
+
+function volverACorregir() {
+  if (!confirm("Vas a volver a la pantalla de revisión con los datos que cargaste.\n\nAl confirmar de nuevo se generará un trámite NUEVO con los datos corregidos. El trámite actual quedará sin usar (no tiene costo si no se pagó).\n\n¿Continuar?")) return;
+  state.resultado = null;
+  state.step = 8;
+  render();
+  window.scrollTo(0, 0);
+}
+
+function copiarLink(link, btn) {
+  navigator.clipboard.writeText(link).then(()=>{
+    const textoOriginal = btn.textContent;
+    btn.textContent = '✓ Copiado';
+    setTimeout(()=>{ btn.textContent = textoOriginal; }, 2000);
+  }).catch(()=>{
+    alert('No se pudo copiar. Copiá el link manualmente: ' + link);
+  });
 }
 
 function imprimirResumen() {

@@ -239,9 +239,9 @@
     <p class="section-sub">Argentina activo. El resto en preparación. Consultas: <a href="mailto:soporte@nucleonkl.com" style="color:#2d9b5a">soporte@nucleonkl.com</a></p>
     <div class="country-selector">
       <span class="flag">🇦🇷</span>
-      <select>
+      <select onchange="if(this.value==='MX'){window.location.href='https://mx.nucleocert.com';}">
         <option value="AR">Argentina — Activo</option>
-        <option disabled>🇲🇽 México — Próximamente</option>
+        <option value="MX">🇲🇽 México — Activo</option>
         <option disabled>🇨🇴 Colombia — Próximamente</option>
         <option disabled>🇨🇱 Chile — Próximamente</option>
         <option disabled>🇵🇪 Perú — Próximamente</option>
@@ -548,7 +548,7 @@
   <div class="container">
     <p class="section-eyebrow">Precios</p>
     <h2 class="section-title">Simple y transparente</h2>
-    <p class="section-sub">Los que firman NKL, no pagan. Los que no, pagan por firmante.</p>
+    <p class="section-sub">Los que <strong>minan</strong> NKL, no pagan. Los que no, pagan por firmante.</p>
 
     <div class="precios-grid">
 
