@@ -154,7 +154,7 @@ function render() {
     case 6: card.innerHTML = renderPartes(); break;
     case 7: card.innerHTML = renderModo(); break;
     case 8: card.innerHTML = renderResumen(); break;
-    case 9: card.innerHTML = renderExito(); break;
+    case 9: card.innerHTML = renderExito(); if (state.resultado && state.resultado.monto_total > 0) cargarLinkPago(state.resultado.numero_cert); break;
   }
 }
 
@@ -412,24 +412,15 @@ function renderPartes() {
 }
 
 function renderModo() {
+  state.modo = 'remoto';
   return `
     <div class="step-eyebrow">Paso 7</div>
-    <div class="step-title">¿Cómo van a firmar?</div>
-    <div class="step-sub">Elegí el modo según si las partes están en el mismo lugar o en distintos lugares.</div>
-    <div class="modo-grid">
-      <div class="modo-card ${state.modo==='presencial'?'selected':''}" onclick="state.modo='presencial';render()">
-        <div style="font-size:1.4rem;margin-bottom:8px">🤝</div>
-        <h4>Presencial</h4>
-        <p>Todos firman en el mismo lugar. Se pasa el dispositivo de mano en mano.</p>
-      </div>
-      <div class="modo-card ${state.modo==='remoto'?'selected':''}" onclick="state.modo='remoto';render()">
-        <div style="font-size:1.4rem;margin-bottom:8px">📱</div>
-        <h4>Remoto</h4>
-        <p>Cada parte firma desde su propio celular. Reciben un link por email.</p>
-      </div>
+    <div class="step-title">Antes de continuar</div>
+    <div class="step-sub">Al confirmar, cada parte va a recibir un link personal e intransferible donde se le va a solicitar verificar su identidad (DNI + selfie) para completar la firma. El link expira a las 72hs. Sus datos, incluidos los biométricos, quedan protegidos y se usan únicamente para esta certificación.</div>
+    <div style="background:#eef6ff;border:1.5px solid #93c5fd;border-radius:8px;padding:14px 16px;margin-top:16px;font-size:.85rem;color:#1a2e1a;font-weight:600;line-height:1.6">
+      ⚖️ Al continuar, declarás que cada firmante autoriza recibir este link y que se le soliciten estos datos.
     </div>
-    ${state.modo==='remoto'?`<div style="background:#f0f7f2;border-radius:8px;padding:12px 14px;font-size:.82rem;color:#374334;line-height:1.6">Cada firmante recibirá un link único por email. El link expira a las 72hs.</div>`:""}
-    <div class="btn-row">
+    <div class="btn-row" style="margin-top:20px">
       <button class="btn-secondary" onclick="prev()">← Atrás</button>
       <button class="btn-primary" onclick="next()">Continuar →</button>
     </div>`;
@@ -486,14 +477,17 @@ function renderExito() {
       <div class="cert-number-value">${r.numero_cert}</div>
     </div>
     ${r.monto_total === 0 ? '<div style="background:#dcfce7;border-radius:8px;padding:12px;text-align:center;font-size:.85rem;color:#15803d;font-weight:600;margin-bottom:16px">✓ Gratuito — Licencia Núcleo activa</div>' : `
-    <div style="background:#fef9c3;border-radius:8px;padding:16px;margin-bottom:16px;text-align:center">
-      <div style="font-size:.82rem;color:#78400a;margin-bottom:12px">Para activar las firmas, completá el pago:</div>
-      <button class="btn-primary" id="btnPagarMP" style="max-width:280px;margin:0 auto;display:block" onclick="pagarConMercadoPago(this, '${r.numero_cert}')">Pagar $${r.monto_total.toLocaleString('es-AR')} ARS con Mercado Pago</button>
-      <div style="font-size:.75rem;color:#9aab97;margin-top:8px">Los links de firma se enviarán automáticamente al confirmar el pago</div>
+    <div style="font-size:.85rem;font-weight:700;color:#1a2e1a;margin-bottom:10px">💰 PAGO DEL TRÁMITE</div>
+    <div style="background:#dbeafe;border:1px solid #93c5fd;border-radius:8px;padding:16px;margin-bottom:16px;text-align:center">
+      <div style="font-size:.82rem;color:#1e3a5f;margin-bottom:12px">Para activar las firmas, completá el pago:</div>
+      <button class="btn-primary" id="btnPagarMP" style="max-width:280px;margin:0 auto;display:block" onclick="irAPagar('${r.numero_cert}')">Pagar $${r.monto_total.toLocaleString('es-AR')} ARS con Mercado Pago</button>
+      <div style="font-size:.75rem;color:#5a7a9a;margin-top:8px">Los links de firma se enviarán automáticamente al confirmar el pago</div>
+      <div id="linkPagoCompartir" style="text-align:left"></div>
     </div>`}
     ${r.partes && r.partes.length > 0 ? `
+    <div style="border-top:2px dashed #d1d5db;margin:20px 0 16px"></div>
     <div>
-      <div style="font-size:.8rem;font-weight:600;color:#5a6b57;margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">Links de firma</div>
+      <div style="font-size:.9rem;font-weight:700;color:#1a2e1a;margin-bottom:12px">✍️ FIRMAS PENDIENTES (${r.partes.length})</div>
       <div class="links-list">
         ${r.partes.map((p,i)=>{
           const nombreFirmante = p.nombre || 'el firmante';
@@ -795,6 +789,39 @@ async function pagarConMercadoPago(btn, cert) {
     alert('Error de conexión. Intentá de nuevo.');
     btn.disabled = false;
     btn.textContent = textoOriginal;
+  }
+}
+
+function irAPagar(cert) {
+  if (window._linkPagoActual) {
+    window.location.href = window._linkPagoActual;
+  } else {
+    pagarConMercadoPago(document.getElementById('btnPagarMP'), cert);
+  }
+}
+
+async function cargarLinkPago(cert) {
+  const cont = document.getElementById('linkPagoCompartir');
+  if (!cont) return;
+  cont.innerHTML = '<div style="font-size:.75rem;color:#9aab97;margin-top:12px">Generando link de pago...</div>';
+  try {
+    const res = await fetch(`${API}/tramites/${cert}/crear-preferencia`, {method: "POST"});
+    const data = await res.json();
+    if (!data.ok) { cont.innerHTML = ''; return; }
+    window._linkPagoActual = data.init_point;
+    const mensajeWa = encodeURIComponent('Hola! Te comparto el link de pago para el trámite de Núcleo CERT: ' + data.init_point);
+    cont.innerHTML = `
+      <div style="margin-top:12px;padding:10px 12px;background:#fff;border:1px solid #f0e3b0;border-radius:6px;font-size:.8rem;color:#7a5c00;font-weight:600">
+        📲 ¿No pagás vos? Compartí este link con quien corresponda
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <a href="https://wa.me/?text=${mensajeWa}" target="_blank" style="flex:1;text-decoration:none">
+          <button class="btn-primary" style="width:100%;background:#25D366;font-size:.85rem;padding:10px 8px" type="button">💬 Enviar por WhatsApp</button>
+        </a>
+        <button class="btn-secondary" style="flex:1;font-size:.85rem;padding:10px 8px" type="button" onclick="copiarLink('${data.init_point}', this)">📋 Copiar link</button>
+      </div>`;
+  } catch (e) {
+    cont.innerHTML = '';
   }
 }
 
