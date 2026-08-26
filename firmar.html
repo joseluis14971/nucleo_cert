@@ -262,10 +262,31 @@ async function iniciarCamaraDNI(lado) {
 function capturarFoto() {
   const video = document.getElementById('video');
   const canvas = document.getElementById('canvasDni');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  canvas.getContext('2d').drawImage(video, 0, 0);
-  const b64 = canvas.toDataURL('image/jpeg', 0.85);
+  const marco = document.getElementById('camaraContainer').querySelector('.camara-marco');
+
+  const videoRect = video.getBoundingClientRect();
+  const marcoRect = marco.getBoundingClientRect();
+
+  // El video usa CSS object-fit:cover: la imagen cruda se escala para
+  // llenar su caja en pantalla, recortando lo que sobra por los bordes.
+  // Calculamos ese factor de escala para poder revertirlo despues.
+  const scale = Math.max(videoRect.width / video.videoWidth, videoRect.height / video.videoHeight);
+  const renderedVideoW = video.videoWidth * scale;
+  const renderedVideoH = video.videoHeight * scale;
+  const offsetX = (renderedVideoW - videoRect.width) / 2;
+  const offsetY = (renderedVideoH - videoRect.height) / 2;
+
+  // Posicion del marco relativa al video, en pixeles de pantalla,
+  // convertida a coordenadas del video CRUDO (sin escalar por CSS).
+  const sx = ((marcoRect.left - videoRect.left) + offsetX) / scale;
+  const sy = ((marcoRect.top - videoRect.top) + offsetY) / scale;
+  const sWidth = marcoRect.width / scale;
+  const sHeight = marcoRect.height / scale;
+
+  canvas.width = sWidth;
+  canvas.height = sHeight;
+  canvas.getContext('2d').drawImage(video, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
+  const b64 = canvas.toDataURL('image/jpeg', 0.92);
   if (fotoActual === 'frente') state.dni_frente_b64 = b64;
   else state.dni_dorso_b64 = b64;
   stopCamera();
